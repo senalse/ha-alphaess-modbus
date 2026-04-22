@@ -1,0 +1,474 @@
+title: AlphaESS
+type: sections
+icon: mdi:solar-panel
+max_columns: 4
+sections:
+  - type: grid
+    cards:
+      - type: entities
+        entities:
+          - entity: input_select.alphaess_helper_inverter_ac_limit
+            name: Inverter AC Limit
+        title: Configuration
+        show_header_toggle: false
+      - type: entities
+        entities:
+          - entity: sensor.alphaess_charging_time_period_control
+            name: Charging Time Period Control
+          - entity: input_number.alphaess_helper_charging_cutoff_soc
+            name: Charging Cutoff SoC
+          - entity: sensor.alphaess_charging_cutoff_soc
+            name: Charging Cutoff SoC
+          - entity: input_number.alphaess_helper_discharging_cutoff_soc
+            name: Discharging Cutoff SoC
+          - entity: sensor.alphaess_discharging_cutoff_soc
+            name: Discharging Cutoff SoC
+          - type: section
+          - entity: sensor.alphaess_charging_period_1
+            name: Charging Period 1
+          - entity: sensor.alphaess_charging_period_2
+            name: Charging Period 2
+          - entity: sensor.alphaess_discharging_period_1
+            name: Discharging Period 1
+          - entity: sensor.alphaess_discharging_period_2
+            name: Discharging Period 2
+          - type: section
+          - entity: input_boolean.alphaess_helper_force_charging
+            name: Force Charging
+          - entity: input_number.alphaess_helper_force_charging_duration
+            name: Duration
+          - entity: number.alphaess_template_force_charging_power
+            name: Power
+          - entity: input_number.alphaess_helper_force_charging_cutoff_soc
+            name: Cutoff SoC
+          - entity: timer.alphaess_helper_force_charging_timer
+            name: Timer
+          - type: section
+          - entity: input_boolean.alphaess_helper_force_discharging
+            name: Force Discharging
+          - entity: input_number.alphaess_helper_force_discharging_duration
+            name: Duration
+          - entity: number.alphaess_template_force_discharging_power
+            name: Power
+          - entity: input_number.alphaess_helper_force_discharging_cutoff_soc
+            name: Cutoff SoC
+          - entity: timer.alphaess_helper_force_discharging_timer
+            name: Timer
+          - type: section
+          - entity: input_boolean.alphaess_helper_force_export
+            name: Force Export
+          - entity: input_number.alphaess_helper_force_export_duration
+            name: Duration
+          - entity: number.alphaess_template_force_export_power
+            name: Power
+          - entity: input_number.alphaess_helper_force_export_cutoff_soc
+            name: Cutoff SoC
+          - entity: timer.alphaess_helper_force_export_timer
+            name: Timer
+          - type: section
+          - entity: input_select.alphaess_helper_charging_discharging_settings
+            name: Charging / Discharging Settings
+        title: Charging
+        show_header_toggle: false
+      - title: Charging Settings
+        type: entities
+        entities:
+          - type: section
+            label: Charging Period 1
+          - entity: input_datetime.alphaess_helper_charging_period_1_start
+            name: Charging Period 1 Start
+          - entity: input_datetime.alphaess_helper_charging_period_1_stop
+            name: Charging Period 1 Stop
+          - type: section
+            label: Charging Period 2
+          - entity: input_datetime.alphaess_helper_charging_period_2_start
+            name: Charging Period 2 Start
+          - entity: input_datetime.alphaess_helper_charging_period_2_stop
+            name: Charging Period 2 Stop
+        visibility:
+          - condition: or
+            conditions:
+              - condition: state
+                entity: input_select.alphaess_helper_charging_discharging_settings
+                state: Enable Grid Charging Battery
+              - condition: state
+                entity: input_select.alphaess_helper_charging_discharging_settings
+                state: Enable Grid Charging Battery & Battery Discharge Time Control
+      - title: Discharging Settings
+        type: entities
+        entities:
+          - type: section
+            label: Discharging Period 1
+          - entity: input_datetime.alphaess_helper_discharging_period_1_start
+            name: Discharging Period 1 Start
+          - entity: input_datetime.alphaess_helper_discharging_period_1_stop
+            name: Discharging Period 1 Stop
+          - type: section
+            label: Discharging Period 2
+          - entity: input_datetime.alphaess_helper_discharging_period_2_start
+            name: Discharging Period 2 Start
+          - entity: input_datetime.alphaess_helper_discharging_period_2_stop
+            name: Discharging Period 2 Stop
+        visibility:
+          - condition: or
+            conditions:
+              - condition: state
+                entity: input_select.alphaess_helper_charging_discharging_settings
+                state: Enable Battery Discharge Time Control
+              - condition: state
+                entity: input_select.alphaess_helper_charging_discharging_settings
+                state: Enable Grid Charging Battery & Battery Discharge Time Control
+    column_span: 1
+  - type: grid
+    cards:
+      - type: entities
+        entities:
+          - entity: sensor.alphaess_current_pv_production
+            name: Current PV Production
+          - type: section
+          - entity: sensor.alphaess_pv1_power
+            name: PV1 Power
+          - entity: sensor.alphaess_pv1_voltage
+            name: PV1 Voltage
+          - entity: sensor.alphaess_pv1_current
+            name: PV1 Current
+          - type: section
+          - entity: sensor.alphaess_pv2_power
+            name: PV2 Power
+          - entity: sensor.alphaess_pv2_voltage
+            name: PV2 Voltage
+          - entity: sensor.alphaess_pv2_current
+            name: PV2 Current
+          - type: section
+          - entity: sensor.alphaess_pv3_power
+            name: PV3 Power
+          - entity: sensor.alphaess_pv3_voltage
+            name: PV3 Voltage
+          - entity: sensor.alphaess_pv3_current
+            name: PV3 Current
+          - type: section
+          - entity: sensor.alphaess_pv4_power
+            name: PV4 Power
+          - entity: sensor.alphaess_pv4_voltage
+            name: PV4 Voltage
+          - entity: sensor.alphaess_pv4_current
+            name: PV4 Current
+          - type: section
+          - entity: sensor.alphaess_active_power_pv_meter
+            name: Active Power PV (Meter)
+          - type: section
+          - entity: input_boolean.alphaess_helper_clipping
+            name: Clipping
+            type: simple-entity
+        title: PV Output
+      - type: entities
+        entities:
+          - entity: input_select.alphaess_helper_dispatch_mode
+            name: Dispatch Mode
+          - type: weblink
+            name: Details/Use Cases
+            url: https://projects.hillviewlodge.ie/alphaess/#dispatch
+            icon: mdi:comment-question
+          - entity: input_number.alphaess_helper_dispatch_duration
+            name: Duration
+          - type: section
+            label: For Mode (1)(2)(3)(5)
+          - entity: number.alphaess_template_dispatch_power
+            name: Power
+          - type: section
+            label: For Mode (2)
+          - entity: input_number.alphaess_helper_dispatch_cutoff_soc
+            name: Cutoff SoC
+          - type: section
+          - entity: input_boolean.alphaess_helper_dispatch
+            name: Dispatch
+          - entity: timer.alphaess_helper_dispatch_timer
+            name: Timer
+          - entity: input_button.alphaess_helper_dispatch_reset_full
+            name: Dispatch Reset
+          - type: section
+          - entity: input_boolean.alphaess_helper_excess_export
+            name: Excess Export
+          - entity: input_boolean.alphaess_helper_excess_export_pause
+            name: Excess Export Pause
+            icon: mdi:pause
+            type: simple-entity
+          - entity: sensor.alphaess_excess_power
+            name: Excess Power
+          - type: section
+          - entity: sensor.alphaess_dispatch_start
+            name: Dispatch Start
+          - entity: sensor.alphaess_dispatch_active_power
+            name: Dispatch Active Power
+          - entity: sensor.alphaess_dispatch_reactive_power
+            name: Dispatch Reactive Power
+          - entity: sensor.alphaess_dispatch_mode
+            name: Dispatch Mode
+          - entity: sensor.alphaess_dispatch_soc
+            name: Dispatch SoC
+          - entity: sensor.alphaess_dispatch_time
+            name: Dispatch Time
+        title: Dispatch
+        show_header_toggle: false
+      - type: entities
+        entities:
+          - entity: sensor.alphaess_ct_rate_grid_meter
+            name: CT Rate Grid Meter
+          - entity: sensor.alphaess_inverter_grid_frequency
+            name: Inverter Grid Frequency
+          - entity: input_number.alphaess_helper_max_feed_to_grid
+            name: Max Feed to Grid
+          - entity: sensor.alphaess_max_feed_to_grid
+            name: Max Feed to Grid
+          - entity: sensor.alphaess_power_grid
+            name: Power Grid
+          - entity: sensor.alphaess_power_phase_a_grid
+            name: Power Phase A Grid
+          - entity: sensor.alphaess_power_phase_b_grid
+            name: Power Phase B Grid
+          - entity: sensor.alphaess_power_phase_c_grid
+            name: Power Phase C Grid
+          - entity: sensor.alphaess_voltage_phase_a_grid
+            name: Voltage Phase A Grid
+          - entity: sensor.alphaess_voltage_phase_b_grid
+            name: Voltage Phase B Grid
+          - entity: sensor.alphaess_voltage_phase_c_grid
+            name: Voltage Phase C Grid
+        title: Grid
+  - type: grid
+    cards:
+      - type: entities
+        entities:
+          - entity: sensor.alphaess_soc_battery
+            name: SoC Battery
+          - entity: sensor.alphaess_power_battery
+            name: Battery Power
+          - entity: sensor.alphaess_battery_voltage
+            name: Battery Voltage
+          - entity: sensor.alphaess_battery_current
+            name: Battery Current
+          - entity: sensor.alphaess_soh_battery
+            name: SoH Battery
+          - entity: sensor.alphaess_battery_status
+            name: Battery Status
+            icon: mdi:list-status
+          - entity: sensor.alphaess_battery_full
+            name: Battery Full
+            icon: mdi:battery
+          - entity: sensor.alphaess_battery_min_cell_temp
+            name: Battery Min Cell Temp
+          - entity: sensor.alphaess_battery_max_cell_temp
+            name: Battery Max Cell Temp
+          - entity: sensor.alphaess_battery_max_charge_current
+            name: Battery Max Charge Current
+          - entity: sensor.alphaess_battery_max_discharge_current
+            name: Battery Max Discharge Current
+          - entity: sensor.alphaess_battery_remaining_time
+            name: Battery Remaining Time
+        title: Battery
+      - type: entities
+        entities:
+          - entity: sensor.alphaess_today_s_energy_from_pv
+            name: Today's Energy from PV
+          - entity: sensor.alphaess_today_s_energy_consumption_from_grid_meter
+            name: Today's Energy Consumption from Grid (Meter)
+          - entity: sensor.alphaess_today_s_energy_feed_to_grid_meter
+            name: Today's Energy Feed to Grid (Meter)
+          - entity: sensor.alphaess_today_s_energy_charge_battery
+            name: Today's Energy Charge Battery
+          - entity: sensor.alphaess_today_s_energy_discharge_battery
+            name: Today's Energy Discharge Battery
+          - entity: sensor.alphaess_today_s_house_load
+            name: Today's House Load
+          - entity: sensor.alphaess_today_s_energy_from_pv_meter
+            name: Today's Energy from PV (Meter)
+        title: Today
+      - type: entities
+        entities:
+          - entity: sensor.alphaess_total_energy_from_pv
+            name: Total Energy from PV
+          - entity: sensor.alphaess_total_energy_consumption_from_grid_meter
+            name: Total Energy Consumption from Grid (Meter)
+          - entity: sensor.alphaess_total_energy_feed_to_grid_meter
+            name: Total Energy Feed to Grid (Meter)
+          - entity: sensor.alphaess_total_energy_charge_battery
+            name: Total Energy Charge Battery
+          - entity: sensor.alphaess_total_energy_charge_battery_from_grid
+            name: Total Energy Charge Battery from Grid
+          - entity: sensor.alphaess_total_energy_discharge_battery
+            name: Total Energy Discharge Battery
+          - entity: sensor.alphaess_total_house_load
+            name: Total House Load
+          - entity: sensor.alphaess_total_energy_feed_to_grid_pv
+            name: Total Energy Feed to Grid (PV)
+          - entity: sensor.alphaess_total_energy_from_pv_meter
+            name: Total Energy from PV (Meter)
+        title: Total
+      - type: entities
+        entities:
+          - entity: sensor.alphaess_pv_capacity_storage
+            name: PV Capacity Storage
+          - entity: sensor.alphaess_pv_capacity_of_grid_inverter
+            name: PV Capacity of Grid Inverter
+          - entity: sensor.alphaess_ct_rate_pv_meter
+            name: CT Rate PV (Meter)
+          - entity: sensor.alphaess_inverter_temperature
+            name: Inverter Temperature
+          - entity: sensor.alphaess_power_inverter
+            name: Power Inverter
+          - entity: sensor.alphaess_power_inverter_l1
+            name: Power Inverter L1
+          - entity: sensor.alphaess_power_inverter_l2
+            name: Power Inverter L2
+          - entity: sensor.alphaess_power_inverter_l3
+            name: Power Inverter L3
+          - entity: sensor.alphaess_backup_power_inverter
+            name: Backup Power Inverter
+          - entity: sensor.alphaess_backup_power_inverter_l1
+            name: Backup Power Inverter L1
+          - entity: sensor.alphaess_backup_power_inverter_l2
+            name: Backup Power Inverter L2
+          - entity: sensor.alphaess_backup_power_inverter_l3
+            name: Backup Power Inverter L3
+          - entity: sensor.alphaess_current_house_load
+            name: Current House Load
+          - type: section
+          - entity: sensor.alphaess_inverter_work_mode
+            name: Inverter Work Mode
+          - entity: sensor.alphaess_system_date
+            name: System Date
+          - entity: sensor.alphaess_system_time
+            name: System Time
+          - entity: input_button.alphaess_helper_synchronise_date_time
+            name: Synchronise Date & Time
+          - entity: sensor.alphaess_ip_method
+            name: IP Method
+          - entity: sensor.alphaess_local_ip_normalised
+            name: Local IP
+          - entity: sensor.alphaess_subnet_mask_normalised
+            name: Subnet Mask
+          - entity: sensor.alphaess_gateway_normalised
+            name: Gateway
+          - entity: sensor.alphaess_modbus_baud_rate
+            name: Modbus Baud Rate
+          - entity: sensor.alphaess_bms_version_normalised
+            name: BMS Version
+          - entity: sensor.alphaess_ems_version_normalised
+            name: EMS Version
+          - entity: sensor.alphaess_lmu_version
+            name: LMU Version
+          - entity: sensor.alphaess_iso_version
+            name: ISO Version
+          - entity: sensor.alphaess_inverter_version
+            name: Inverter Version
+          - entity: sensor.alphaess_inverter_arm_version
+            name: Inverter ARM Version
+        title: Other
+  - type: grid
+    cards:
+      - type: entities
+        entities:
+          - entity: sensor.alphaess_grid_regulation
+            name: Grid Regulation
+          - type: section
+          - entity: sensor.alphaess_ovp_l1
+            name: Overvoltage Protection L1
+          - entity: sensor.alphaess_ovp_l1_time
+            name: OvP L1 Time
+          - entity: sensor.alphaess_ovp_l2
+            name: OvP L2
+          - entity: sensor.alphaess_ovp_l2_time
+            name: OvP L2 Time
+          - entity: sensor.alphaess_ovp_l3
+            name: OvP L3
+          - entity: sensor.alphaess_ovp_l3_time
+            name: OvP L3 Time
+          - entity: sensor.alphaess_ovp10
+            name: OvP10
+          - entity: sensor.alphaess_ovp10_time
+            name: OvP10 Time
+          - type: section
+          - entity: sensor.alphaess_uvp_l1
+            name: Undervoltage Protection L1
+          - entity: sensor.alphaess_uvp_l1_time
+            name: UvP L1 Time
+          - entity: sensor.alphaess_uvp_l2
+            name: UvP L2
+          - entity: sensor.alphaess_uvp_l2_time
+            name: UvP L2 Time
+          - entity: sensor.alphaess_uvp_l3
+            name: UvP L3
+          - entity: sensor.alphaess_uvp_l3_time
+            name: UvP L3 Time
+          - type: section
+          - entity: sensor.alphaess_ofp_l1
+            name: Overfrequency Protection L1
+          - entity: sensor.alphaess_ofp_l1_time
+            name: OfP L1 Time
+          - entity: sensor.alphaess_ofp_l2
+            name: OfP L2
+          - entity: sensor.alphaess_ofp_l2_time
+            name: OfP L2 Time
+          - entity: sensor.alphaess_ofp_l3
+            name: OfP L3
+          - entity: sensor.alphaess_ofp_l3_time
+            name: OfP L3 Time
+          - type: section
+          - entity: sensor.alphaess_ufp_l1
+            name: Underfrequency Protection L1
+          - entity: sensor.alphaess_ufp_l1_time
+            name: UfP L1 Time
+          - entity: sensor.alphaess_ufp_l2
+            name: UfP L2
+          - entity: sensor.alphaess_ufp_l2_time
+            name: UfP L2 Time
+          - entity: sensor.alphaess_ufp_l3
+            name: UfP L3
+          - entity: sensor.alphaess_ufp_l3_time
+            name: UfP L3 Time
+        title: Grid Safety
+      - type: entities
+        entities:
+          - entity: sensor.alphaess_system_fault
+            name: System Fault
+          - type: section
+          - entity: sensor.alphaess_inverter_warning_1
+            name: Inverter Warning 1
+          - entity: sensor.alphaess_inverter_warning_2
+            name: Inverter Warning 2
+          - entity: sensor.alphaess_inverter_fault_1
+            name: Inverter Fault 1
+          - entity: sensor.alphaess_inverter_fault_2
+            name: Inverter Fault 2
+          - type: section
+          - entity: sensor.alphaess_battery_warning
+            name: Battery Warning
+          - entity: sensor.alphaess_battery_1_warning
+            name: Battery Warning 1
+          - entity: sensor.alphaess_battery_2_warning
+            name: Battery Warning 2
+          - entity: sensor.alphaess_battery_3_warning
+            name: Battery Warning 3
+          - entity: sensor.alphaess_battery_4_warning
+            name: Battery Warning 4
+          - entity: sensor.alphaess_battery_5_warning
+            name: Battery Warning 5
+          - entity: sensor.alphaess_battery_6_warning
+            name: Battery Warning 6
+          - entity: sensor.alphaess_battery_fault
+            name: Battery Fault
+          - entity: sensor.alphaess_battery_1_fault
+            name: Battery Fault 1
+          - entity: sensor.alphaess_battery_2_fault
+            name: Battery Fault 2
+          - entity: sensor.alphaess_battery_3_fault
+            name: Battery Fault 3
+          - entity: sensor.alphaess_battery_4_fault
+            name: Battery Fault 4
+          - entity: sensor.alphaess_battery_5_fault
+            name: Battery Fault 5
+          - entity: sensor.alphaess_battery_6_fault
+            name: Battery Fault 6
+        title: Warnings & Faults
+path: alphaess
+cards: []

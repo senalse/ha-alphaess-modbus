@@ -1,0 +1,146 @@
+title: AlphaESS
+views:
+  - theme: Backend-selected
+    title: Power Diagram Today
+    path: power-diagram-today
+    type: panel
+    cards:
+      - type: custom:apexcharts-card
+        apex_config:
+          yaxis:
+            forceNiceScale: true
+          chart:
+            height: 600px
+          stroke:
+            width: 1.5
+            curve: smooth
+          annotations:
+            yaxis:
+              - 'y': 0
+                strokeDashArray: 0
+                borderWidth: 2
+        graph_span: 26h
+        span:
+          start: day
+          offset: '-2h'
+        all_series_config:
+          stroke_width: 1.5
+          opacity: 0.4
+          type: area
+          curve: smooth
+        now:
+          show: true
+          color: red
+        header:
+          show: false
+          title: Battery
+          show_states: true
+          colorize_states: true
+        series:
+          - entity: sensor.alphaess_soc_battery
+            name: Battery
+            yaxis_id: battery
+            type: area
+            color: '#A0C770'
+            extend_to: now
+            curve: smooth
+            fill_raw: last
+            opacity: 0.6
+            group_by:
+              func: avg
+              duration: 5min
+            show:
+              legend_value: false
+          - entity: sensor.alphaess_current_house_load_apexcharts
+            float_precision: 2
+            name: Load
+            yaxis_id: power
+            type: area
+            color: '#6FB6C6'
+            unit: kW
+            extend_to: now
+            curve: smooth
+            fill_raw: last
+            opacity: 0.6
+            group_by:
+              func: avg
+              duration: 5min
+            show:
+              legend_value: false
+          - entity: sensor.alphaess_current_pv_production_apexcharts
+            float_precision: 2
+            name: PV
+            yaxis_id: power
+            type: area
+            color: '#FABF00'
+            unit: kW
+            extend_to: now
+            curve: smooth
+            fill_raw: last
+            opacity: 0.5
+            group_by:
+              func: avg
+              duration: 5min
+            show:
+              legend_value: false
+          - entity: sensor.alphaess_power_grid_consumption_apexcharts
+            float_precision: 2
+            name: Grid Consumption
+            yaxis_id: power
+            type: area
+            color: '#C18349'
+            unit: kW
+            extend_to: now
+            curve: smooth
+            fill_raw: last
+            opacity: 0.3
+            group_by:
+              func: min
+              duration: 5min
+            show:
+              legend_value: false
+          - entity: sensor.alphaess_power_grid_feed_in_apexcharts
+            float_precision: 2
+            name: Feed-In
+            max: 6
+            yaxis_id: power
+            type: area
+            color: '#DF681F'
+            unit: kW
+            extend_to: now
+            curve: smooth
+            fill_raw: last
+            opacity: 0.3
+            group_by:
+              func: avg
+              duration: 5min
+            show:
+              legend_value: false
+        yaxis:
+          - id: power
+            min: 0
+            max: 15
+            decimals: 2
+            apex_config:
+              tickAmount: 15
+              title:
+                text: POWER
+              labels:
+                formatter: |
+                  EVAL:function(value) {
+                    return value.toFixed(2).toString() + " kW";
+                  }
+          - id: battery
+            min: 0
+            max: 100
+            decimals: 0
+            opposite: true
+            apex_config:
+              tickAmount: 10
+              title:
+                text: BAT
+              labels:
+                formatter: |
+                  EVAL:function(value) {
+                    return value.toFixed(0).toString() + " %";
+                  }
