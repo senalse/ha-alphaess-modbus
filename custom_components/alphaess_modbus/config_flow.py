@@ -3,7 +3,10 @@ from __future__ import annotations
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
-from homeassistant.data_entry_flow import FlowResult
+try:
+    from homeassistant.config_entries import ConfigFlowResult as FlowResult
+except ImportError:
+    from homeassistant.data_entry_flow import FlowResult  # HA < 2024.4
 
 from .const import DEFAULT_PORT, DEFAULT_SLAVE, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .modbus_client import AlphaESSModbusClient
