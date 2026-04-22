@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "AlphaESS Modbus TCP",
+        "description": "Connect to your AlphaESS inverter via Modbus TCP. Make sure the inverter is reachable on the local network.",
+        "data": {
+          "host": "Inverter IP Address",
+          "port": "Modbus Port",
+          "slave_id": "Slave ID",
+          "scan_interval": "Scan Interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the inverter. Check the IP address, port, and that Modbus TCP is enabled on the inverter."
+    },
+    "abort": {
+      "already_configured": "This inverter is already configured."
+    }
+  }
+}

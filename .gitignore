@@ -1,0 +1,15 @@
+# Claude Code
+.claude/
+CLAUDE.md
+
+# Source YAML (reference only, not part of the HACS integration)
+integration_alpha_ess.yaml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
