@@ -16,19 +16,22 @@ from .coordinator import AlphaESSCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# Only one dispatch mode can be active at a time.
+# Switches that are mutually exclusive — turning one on turns all others off.
 _MUTEX_SWITCHES = [
     "force_charging",
     "force_discharging",
     "force_export",
+    "dispatch",
     "excess_export",
 ]
 
 SWITCH_DEFS = [
-    {"key": "force_charging",    "name": "Force Charging",    "icon": "mdi:battery-charging"},
-    {"key": "force_discharging", "name": "Force Discharging", "icon": "mdi:battery-arrow-down"},
-    {"key": "force_export",      "name": "Force Export",      "icon": "mdi:transmission-tower-export"},
-    {"key": "excess_export",     "name": "Excess Export",     "icon": "mdi:solar-power"},
+    {"key": "force_charging",      "name": "Force Charging",       "icon": "mdi:battery-charging"},
+    {"key": "force_discharging",   "name": "Force Discharging",    "icon": "mdi:battery-arrow-down"},
+    {"key": "force_export",        "name": "Force Export",         "icon": "mdi:transmission-tower-export"},
+    {"key": "dispatch",            "name": "Dispatch",             "icon": "mdi:button-pointer"},
+    {"key": "excess_export",       "name": "Excess Export",        "icon": "mdi:solar-power"},
+    {"key": "excess_export_pause", "name": "Excess Export Pause",  "icon": "mdi:pause-circle"},
 ]
 
 
@@ -38,7 +41,7 @@ async def async_setup_entry(
     coordinator: AlphaESSCoordinator = hass.data[DOMAIN][entry.entry_id]
     entities = [AlphaESSSwitch(coordinator, entry, d) for d in SWITCH_DEFS]
 
-    # Store references so switches can turn each other off
+    # Store references so switches can interact with each other
     hass.data[DOMAIN][f"{entry.entry_id}_switches"] = {e.switch_key: e for e in entities}
     async_add_entities(entities)
 
@@ -83,10 +86,14 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         return self._is_on
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        # Turn off all other mutex switches first
+        if self.switch_key == "excess_export_pause":
+            await self._handle_pause_turn_on()
+            return
+
+        # Mutual exclusion: turn off all other mutex switches first
         switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
         for key, sw in switches.items():
-            if key != self.switch_key and sw.is_on:
+            if key in _MUTEX_SWITCHES and key != self.switch_key and sw.is_on:
                 await sw._async_turn_off_silent()
 
         self._is_on = True
@@ -99,6 +106,8 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                 await self._start_force_discharging()
             elif self.switch_key == "force_export":
                 await self._start_force_export()
+            elif self.switch_key == "dispatch":
+                await self._start_dispatch()
             elif self.switch_key == "excess_export":
                 await self._start_excess_export()
         except Exception as err:
@@ -107,6 +116,9 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
+        if self.switch_key == "excess_export_pause":
+            await self._handle_pause_turn_off()
+            return
         await self._async_turn_off_silent()
 
     async def _async_turn_off_silent(self) -> None:
@@ -114,6 +126,14 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._cancel_timer()
         self.async_write_ha_state()
         await self._coordinator.async_reset_dispatch()
+        # When excess_export stops, also clear the pause switch
+        if self.switch_key == "excess_export":
+            switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+            pause_sw = switches.get("excess_export_pause")
+            if pause_sw and pause_sw.is_on:
+                pause_sw._is_on = False
+                pause_sw._cancel_timer()
+                pause_sw.async_write_ha_state()
 
     def _cancel_timer(self) -> None:
         if self._timer_cancel:
@@ -135,6 +155,21 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
     def _num(self, key: str, default: float) -> float:
         return _get_number(self.hass, self._entry.entry_id, key, default)
 
+    def _get_dispatch_mode(self) -> int:
+        """Read the dispatch mode value from the select entity option string e.g. 'Load Following (3)'."""
+        entity_id = "select.alphaess_dispatch_mode"
+        state = self.hass.states.get(entity_id)
+        if state and state.state not in ("unknown", "unavailable"):
+            try:
+                return int(state.state.split("(")[-1].split(")")[0])
+            except (ValueError, IndexError):
+                pass
+        return DISPATCH_MODE_SOC_CONTROL
+
+    # ------------------------------------------------------------------
+    # Force Charging
+    # ------------------------------------------------------------------
+
     async def _start_force_charging(self) -> None:
         power_kw = self._num("force_charging_power", 5.0)
         cutoff_soc = self._num("force_charging_cutoff_soc", 100.0)
@@ -144,14 +179,18 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         power_raw = int(32000 - power_kw * 1000)
 
         await self._coordinator.async_write_dispatch([
-            1,           # Dispatch Start
-            0, power_raw,  # Active Power (hi word=0, lo=offset value)
-            0, 32000,    # Reactive Power
+            1,
+            0, power_raw,
+            0, 32000,
             DISPATCH_MODE_SOC_CONTROL,
             soc_raw,
             0, duration_s,
         ])
         self._schedule_auto_off(duration_s)
+
+    # ------------------------------------------------------------------
+    # Force Discharging
+    # ------------------------------------------------------------------
 
     async def _start_force_discharging(self) -> None:
         power_kw = self._num("force_discharging_power", 5.0)
@@ -171,6 +210,10 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         ])
         self._schedule_auto_off(duration_s)
 
+    # ------------------------------------------------------------------
+    # Force Export
+    # ------------------------------------------------------------------
+
     async def _start_force_export(self) -> None:
         power_kw = self._num("force_export_power", 5.0)
         cutoff_soc = self._num("force_export_cutoff_soc", 100.0)
@@ -189,19 +232,49 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         ])
         self._schedule_auto_off(duration_s)
 
-    async def _start_excess_export(self) -> None:
-        # Excess Export: dispatch battery to charge from PV excess,
-        # inverter handles clipping. Uses a 5-minute dead-man's switch.
-        # The coordinator will keep re-dispatching while the switch is on.
+    # ------------------------------------------------------------------
+    # Generic Dispatch
+    # ------------------------------------------------------------------
+
+    async def _start_dispatch(self) -> None:
+        power_kw = self._num("dispatch_power", 0.0)
+        cutoff_soc = self._num("dispatch_cutoff_soc", 100.0)
+        duration_min = self._num("dispatch_duration", 120.0)
+        duration_s = int(duration_min * 60)
+        mode_val = self._get_dispatch_mode()
+
+        # Modes 1/2/3/5 use the power offset; modes 4/6/7/19 use neutral (32000)
+        if mode_val in (1, 2, 3, 5):
+            power_raw = int(32000 + power_kw * 1000)
+        else:
+            power_raw = 32000
+
+        # SoC target only applies in mode 2 (State of Charge Control)
+        soc_raw = int(cutoff_soc / DISPATCH_SOC_SCALE) if mode_val == DISPATCH_MODE_SOC_CONTROL else 0
+
         await self._coordinator.async_write_dispatch([
             1,
-            0, 32000,  # No forced power offset
+            0, power_raw,
+            0, 32000,
+            mode_val,
+            soc_raw,
+            0, duration_s,
+        ])
+        self._schedule_auto_off(duration_s)
+
+    # ------------------------------------------------------------------
+    # Excess Export
+    # ------------------------------------------------------------------
+
+    async def _start_excess_export(self) -> None:
+        await self._coordinator.async_write_dispatch([
+            1,
+            0, 32000,
             0, 32000,
             DISPATCH_MODE_SOC_CONTROL,
-            255,       # Max SoC
-            0, 300,    # 5-minute dead man's switch
+            255,
+            0, 300,
         ])
-        # Re-dispatch every 4 minutes to keep it alive
         self._schedule_excess_export_refresh()
 
     def _schedule_excess_export_refresh(self) -> None:
@@ -209,10 +282,45 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         loop = self.hass.loop
 
         async def _refresh():
-            if self._is_on:
-                await self._start_excess_export()
+            if not self._is_on:
+                return
+            switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+            pause_sw = switches.get("excess_export_pause")
+            if pause_sw and pause_sw.is_on:
+                # Paused — reschedule without re-dispatching
+                self._schedule_excess_export_refresh()
+                return
+            await self._start_excess_export()
 
         def _callback():
             asyncio.ensure_future(_refresh(), loop=loop)
 
         self._timer_cancel = loop.call_later(240, _callback)
+
+    # ------------------------------------------------------------------
+    # Excess Export Pause
+    # ------------------------------------------------------------------
+
+    async def _handle_pause_turn_on(self) -> None:
+        self._is_on = True
+        self.async_write_ha_state()
+        try:
+            # Write stopped-state dispatch; same payload as reset (start=0, 90s window)
+            await self._coordinator.async_reset_dispatch()
+        except Exception as err:
+            _LOGGER.error("Failed to start excess_export_pause: %s", err)
+            self._is_on = False
+            self.async_write_ha_state()
+
+    async def _handle_pause_turn_off(self) -> None:
+        self._is_on = False
+        self._cancel_timer()
+        self.async_write_ha_state()
+        # If excess_export is still active, resume it immediately
+        switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+        excess_sw = switches.get("excess_export")
+        if excess_sw and excess_sw.is_on:
+            try:
+                await excess_sw._start_excess_export()
+            except Exception as err:
+                _LOGGER.error("Failed to resume excess_export after pause: %s", err)
