@@ -19,9 +19,13 @@ class AlphaESSModbusClient:
         self._client: AsyncModbusTcpClient | None = None
         self._lock = asyncio.Lock()
 
-    async def connect(self) -> bool:
-        self._client = AsyncModbusTcpClient(self._host, port=self._port)
-        return await self._client.connect()
+    @property
+    def connected(self) -> bool:
+        return self._client is not None and self._client.connected
+
+    async def connect(self) -> None:
+        self._client = AsyncModbusTcpClient(self._host, port=self._port, timeout=5)
+        await self._client.connect()
 
     async def close(self) -> None:
         if self._client:

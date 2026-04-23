@@ -17,8 +17,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         port=entry.data[CONF_PORT],
         slave_id=entry.data[CONF_SLAVE_ID],
     )
-    connected = await client.connect()
-    if not connected:
+    await client.connect()
+    if not client.connected:
         return False
 
     coordinator = AlphaESSCoordinator(hass, client)
