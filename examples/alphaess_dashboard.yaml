@@ -1,0 +1,284 @@
+title: AlphaESS
+type: sections
+icon: mdi:solar-panel
+max_columns: 3
+sections:
+
+  # ---------------------------------------------------------------------------
+  # ROW 1 — Live status
+  # ---------------------------------------------------------------------------
+  - type: grid
+    title: Live
+    cards:
+
+      - type: gauge
+        entity: sensor.alphaess_soc_battery
+        name: Battery
+        min: 0
+        max: 100
+        needle: true
+        severity:
+          green: 50
+          yellow: 20
+          red: 0
+
+      - type: glance
+        title: Power Now
+        show_name: true
+        show_icon: true
+        show_state: true
+        entities:
+          - entity: sensor.alphaess_active_power_pv_meter
+            name: Solar
+            icon: mdi:solar-power
+          - entity: sensor.alphaess_power_battery
+            name: Battery
+            icon: mdi:battery-charging
+          - entity: sensor.alphaess_power_grid
+            name: Grid
+            icon: mdi:transmission-tower
+
+      - type: entities
+        title: Battery Detail
+        entities:
+          - entity: sensor.alphaess_soc_battery
+            name: State of Charge
+          - entity: sensor.alphaess_soh_battery
+            name: State of Health
+          - entity: sensor.alphaess_battery_voltage
+            name: Voltage
+          - entity: sensor.alphaess_battery_current
+            name: Current
+          - entity: sensor.alphaess_battery_remaining_time
+            name: Remaining Time
+          - entity: sensor.alphaess_battery_min_cell_temp
+            name: Min Cell Temp
+          - entity: sensor.alphaess_battery_max_cell_temp
+            name: Max Cell Temp
+
+      - type: entities
+        title: Solar Detail
+        entities:
+          - entity: sensor.alphaess_pv1_power
+            name: PV String 1
+          - entity: sensor.alphaess_pv2_power
+            name: PV String 2
+          - entity: sensor.alphaess_pv3_power
+            name: PV String 3
+          - entity: sensor.alphaess_pv4_power
+            name: PV String 4
+          - entity: sensor.alphaess_active_power_pv_meter
+            name: Total (Meter)
+
+      - type: entities
+        title: Grid Detail
+        entities:
+          - entity: sensor.alphaess_power_grid
+            name: Grid Power
+          - entity: sensor.alphaess_power_phase_a_grid
+            name: Phase A
+          - entity: sensor.alphaess_power_phase_b_grid
+            name: Phase B
+          - entity: sensor.alphaess_power_phase_c_grid
+            name: Phase C
+          - entity: sensor.alphaess_voltage_phase_a_grid
+            name: Voltage A
+          - entity: sensor.alphaess_inverter_grid_frequency
+            name: Frequency
+
+  # ---------------------------------------------------------------------------
+  # ROW 2 — Battery controls
+  # ---------------------------------------------------------------------------
+  - type: grid
+    title: Battery Controls
+    cards:
+
+      - type: entities
+        title: Force Charging
+        show_header_toggle: false
+        entities:
+          - entity: switch.alphaess_force_charging
+            name: Enable
+          - type: section
+          - entity: number.alphaess_force_charging_power
+            name: Power (kW)
+          - entity: number.alphaess_force_charging_duration
+            name: Duration (min)
+          - entity: number.alphaess_force_charging_cutoff_soc
+            name: Stop at SoC (%)
+
+      - type: entities
+        title: Force Discharging
+        show_header_toggle: false
+        entities:
+          - entity: switch.alphaess_force_discharging
+            name: Enable
+          - type: section
+          - entity: number.alphaess_force_discharging_power
+            name: Power (kW)
+          - entity: number.alphaess_force_discharging_duration
+            name: Duration (min)
+          - entity: number.alphaess_force_discharging_cutoff_soc
+            name: Stop at SoC (%)
+
+      - type: entities
+        title: Export
+        show_header_toggle: false
+        entities:
+          - entity: switch.alphaess_excess_export
+            name: Excess Export
+          - entity: switch.alphaess_excess_export_pause
+            name: Pause Excess Export
+          - type: section
+          - entity: switch.alphaess_force_export
+            name: Force Export
+          - entity: number.alphaess_force_export_power
+            name: Power (kW)
+          - entity: number.alphaess_force_export_duration
+            name: Duration (min)
+          - entity: number.alphaess_force_export_cutoff_soc
+            name: Stop at SoC (%)
+
+  # ---------------------------------------------------------------------------
+  # ROW 3 — Schedule & settings
+  # ---------------------------------------------------------------------------
+  - type: grid
+    title: Schedule & Settings
+    cards:
+
+      - type: entities
+        title: Charge / Discharge Settings
+        show_header_toggle: false
+        entities:
+          - entity: select.alphaess_charging_discharging_settings
+            name: Mode
+          - type: section
+            label: Limits
+          - entity: number.alphaess_charging_cutoff_soc
+            name: Charging Cutoff SoC (%)
+          - entity: number.alphaess_discharging_cutoff_soc
+            name: Discharging Cutoff SoC (%)
+          - entity: number.alphaess_max_feed_to_grid
+            name: Max Feed to Grid (%)
+          - entity: select.alphaess_inverter_ac_limit
+            name: Inverter AC Limit
+
+      - type: entities
+        title: Charging Periods
+        show_header_toggle: false
+        entities:
+          - type: section
+            label: Period 1
+          - entity: number.alphaess_charging_period_1_start_hour
+            name: Start Hour
+          - entity: number.alphaess_charging_period_1_start_minute
+            name: Start Minute
+          - entity: number.alphaess_charging_period_1_stop_hour
+            name: Stop Hour
+          - entity: number.alphaess_charging_period_1_stop_minute
+            name: Stop Minute
+          - type: section
+            label: Period 2
+          - entity: number.alphaess_charging_period_2_start_hour
+            name: Start Hour
+          - entity: number.alphaess_charging_period_2_start_minute
+            name: Start Minute
+          - entity: number.alphaess_charging_period_2_stop_hour
+            name: Stop Hour
+          - entity: number.alphaess_charging_period_2_stop_minute
+            name: Stop Minute
+
+      - type: entities
+        title: Discharging Periods
+        show_header_toggle: false
+        entities:
+          - type: section
+            label: Period 1
+          - entity: number.alphaess_discharging_period_1_start_hour
+            name: Start Hour
+          - entity: number.alphaess_discharging_period_1_start_minute
+            name: Start Minute
+          - entity: number.alphaess_discharging_period_1_stop_hour
+            name: Stop Hour
+          - entity: number.alphaess_discharging_period_1_stop_minute
+            name: Stop Minute
+          - type: section
+            label: Period 2
+          - entity: number.alphaess_discharging_period_2_start_hour
+            name: Start Hour
+          - entity: number.alphaess_discharging_period_2_start_minute
+            name: Start Minute
+          - entity: number.alphaess_discharging_period_2_stop_hour
+            name: Stop Hour
+          - entity: number.alphaess_discharging_period_2_stop_minute
+            name: Stop Minute
+
+      - type: entities
+        title: Dispatch
+        show_header_toggle: false
+        entities:
+          - entity: switch.alphaess_dispatch
+            name: Enable
+          - entity: select.alphaess_dispatch_mode
+            name: Mode
+          - entity: number.alphaess_dispatch_power
+            name: Power (kW)
+          - entity: number.alphaess_dispatch_duration
+            name: Duration (min)
+          - entity: number.alphaess_dispatch_cutoff_soc
+            name: Stop at SoC (%)
+          - type: section
+          - entity: button.alphaess_dispatch_reset
+            name: Reset Dispatch
+          - type: section
+            label: Live Registers
+          - entity: sensor.alphaess_dispatch_start
+            name: Active
+          - entity: sensor.alphaess_dispatch_active_power
+            name: Active Power
+          - entity: sensor.alphaess_dispatch_mode
+            name: Active Mode
+          - entity: sensor.alphaess_dispatch_soc
+            name: SoC Target
+          - entity: sensor.alphaess_dispatch_time
+            name: Time Remaining
+
+  # ---------------------------------------------------------------------------
+  # ROW 4 — Energy totals & system
+  # ---------------------------------------------------------------------------
+  - type: grid
+    title: Energy & System
+    cards:
+
+      - type: entities
+        title: Lifetime Energy
+        entities:
+          - entity: sensor.alphaess_total_energy_from_pv
+            name: From PV
+          - entity: sensor.alphaess_total_energy_feed_to_grid_meter
+            name: Feed to Grid
+          - entity: sensor.alphaess_total_energy_consumption_from_grid_meter
+            name: From Grid
+          - entity: sensor.alphaess_total_energy_charge_battery
+            name: Charged Battery
+          - entity: sensor.alphaess_total_energy_discharge_battery
+            name: Discharged Battery
+          - entity: sensor.alphaess_total_energy_charge_battery_from_grid
+            name: Grid → Battery
+
+      - type: entities
+        title: System
+        entities:
+          - entity: sensor.alphaess_inverter_temperature
+            name: Inverter Temperature
+          - entity: sensor.alphaess_inverter_work_mode
+            name: Work Mode
+          - entity: sensor.alphaess_system_fault
+            name: System Fault
+          - entity: sensor.alphaess_battery_warning
+            name: Battery Warning
+          - entity: sensor.alphaess_battery_fault
+            name: Battery Fault
+          - type: section
+          - entity: button.alphaess_synchronise_date_time
+            name: Sync Date & Time
