@@ -14,7 +14,7 @@ Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewl
 
 ## Features
 
-- **60+ sensor entities** — real-time power flows, battery SoC/SoH, temperatures, voltages, energy totals, grid safety parameters, faults & warnings
+- **90+ sensor entities enabled by default** (143 total) — real-time power flows, battery SoC/SoH, temperatures, voltages, energy totals, grid safety parameters, faults & warnings
 - **Force Charging** — charge battery from grid at configurable power (kW), duration, and cutoff SoC
 - **Force Discharging** — discharge battery at configurable power and duration
 - **Force Export** — export to grid at configurable power
@@ -125,6 +125,7 @@ The inverter's Modbus TCP port is `502` and the slave ID is `85` by default. The
 - Confirm the inverter IP is reachable: try `ping <inverter-ip>` from your HA host
 - Check that Modbus TCP is enabled on the inverter (AlphaESS app → Settings → Communication)
 - Make sure no firewall is blocking port 502
+- AlphaESS inverters only allow **one Modbus TCP connection at a time** — if another app (a second HA instance, a Modbus tool, Alpha2MQTT, etc.) is already connected, HA will be refused. Disconnect the other client and reload the integration
 
 **Entities show unavailable after some time**
 - This can happen if the inverter goes into sleep/standby mode at night — it recovers automatically when the inverter wakes up
