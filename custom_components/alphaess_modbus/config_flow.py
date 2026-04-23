@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
@@ -10,6 +11,8 @@ except ImportError:
 
 from .const import DEFAULT_PORT, DEFAULT_SLAVE, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .modbus_client import AlphaESSModbusClient
+
+_LOGGER = logging.getLogger(__name__)
 
 CONF_SLAVE_ID = "slave_id"
 
@@ -34,8 +37,8 @@ class AlphaESSConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 slave_id=user_input[CONF_SLAVE_ID],
             )
             try:
-                connected = await client.connect()
-                if not connected:
+                await client.connect()
+                if not client.connected:
                     errors["base"] = "cannot_connect"
                 else:
                     await client.read_register(0x0102, "int16")  # SoC register
@@ -49,6 +52,9 @@ class AlphaESSConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         data=user_input,
                     )
             except Exception:
+                _LOGGER.exception("AlphaESS connection test failed for %s:%s slave=%s",
+                                  user_input[CONF_HOST], user_input[CONF_PORT],
+                                  user_input[CONF_SLAVE_ID])
                 errors["base"] = "cannot_connect"
             finally:
                 await client.close()
