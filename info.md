@@ -6,7 +6,7 @@ No cloud dependency. All communication is direct to the inverter on your LAN.
 
 ## Features
 
-- **60+ sensor entities** — real-time power flows, battery SoC/SoH, temperatures, energy totals, grid safety parameters, faults & warnings
+- **90+ sensor entities enabled by default** (143 total) — real-time power flows, battery SoC/SoH, temperatures, energy totals, grid safety parameters, faults & warnings
 - **Force Charging** — charge battery from grid at configurable power and duration
 - **Force Discharging** — discharge battery at configurable power and duration
 - **Force Export** — export to grid at configurable power
