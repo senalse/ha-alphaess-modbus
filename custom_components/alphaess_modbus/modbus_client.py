@@ -15,6 +15,9 @@ _LOGGER = logging.getLogger(__name__)
 _sig = inspect.signature(AsyncModbusTcpClient.read_holding_registers).parameters
 _SLAVE_KWARG = "device_id" if "device_id" in _sig else "slave"
 
+_CONNECT_RETRIES = 5
+_CONNECT_RETRY_DELAY = 3.0  # seconds between retries
+
 
 class AlphaESSModbusClient:
     def __init__(self, host: str, port: int, slave_id: int) -> None:
@@ -29,21 +32,36 @@ class AlphaESSModbusClient:
         return self._client is not None and self._client.connected
 
     async def connect(self) -> None:
+        """Connect with retries — inverter may refuse immediately after a prior close."""
         self._client = AsyncModbusTcpClient(self._host, port=self._port, timeout=5)
-        await self._client.connect()
+        for attempt in range(_CONNECT_RETRIES):
+            await self._client.connect()
+            if self._client.connected:
+                return
+            if attempt < _CONNECT_RETRIES - 1:
+                _LOGGER.debug(
+                    "Connect attempt %d/%d failed, retrying in %.0fs",
+                    attempt + 1, _CONNECT_RETRIES, _CONNECT_RETRY_DELAY,
+                )
+                await asyncio.sleep(_CONNECT_RETRY_DELAY)
 
     async def close(self) -> None:
         if self._client:
             self._client.close()
             self._client = None
 
+    async def _ensure_connected(self) -> None:
+        if not self.connected:
+            await self.connect()
+        if not self.connected:
+            raise ModbusException("Not connected")
+
     async def read_register(self, address: int, data_type: str, count: int = 1) -> Any:
         async with self._lock:
             return await self._read(address, data_type, count)
 
     async def _read(self, address: int, data_type: str, count: int) -> Any:
-        if self._client is None or not self._client.connected:
-            raise ModbusException("Not connected")
+        await self._ensure_connected()
 
         if data_type == "string":
             result = await self._client.read_holding_registers(
@@ -82,8 +100,7 @@ class AlphaESSModbusClient:
 
     async def write_registers(self, address: int, values: list[int]) -> None:
         async with self._lock:
-            if self._client is None or not self._client.connected:
-                raise ModbusException("Not connected")
+            await self._ensure_connected()
             result = await self._client.write_registers(
                 address, values, **{_SLAVE_KWARG: self._slave_id}
             )
