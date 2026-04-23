@@ -41,14 +41,14 @@ class AlphaESSModbusClient:
             raise ModbusException("Not connected")
 
         if data_type == "string":
-            result = await self._client.read_holding_registers(address, count=count, slave=self._slave_id)
+            result = await self._client.read_holding_registers(address, count=count, device_id=self._slave_id)
             if result.isError():
                 raise ModbusException(f"Error reading {address:#06x}: {result}")
             raw = b"".join(struct.pack(">H", r) for r in result.registers)
             return raw.decode("ascii", errors="replace").rstrip("\x00")
 
         reg_count = 2 if data_type in ("int32", "uint32") else 1
-        result = await self._client.read_holding_registers(address, count=reg_count, slave=self._slave_id)
+        result = await self._client.read_holding_registers(address, count=reg_count, device_id=self._slave_id)
         if result.isError():
             raise ModbusException(f"Error reading {address:#06x}: {result}")
 
@@ -75,7 +75,7 @@ class AlphaESSModbusClient:
         async with self._lock:
             if self._client is None or not self._client.connected:
                 raise ModbusException("Not connected")
-            result = await self._client.write_registers(address, values, slave=self._slave_id)
+            result = await self._client.write_registers(address, values, device_id=self._slave_id)
             if result.isError():
                 raise ModbusException(f"Error writing {address:#06x}: {result}")
 
