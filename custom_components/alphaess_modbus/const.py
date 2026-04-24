@@ -45,7 +45,7 @@ class ModbusSensorDef:
 class ModbusNumberDef:
     key: str
     name: str
-    address: int
+    address: int | None
     data_type: str = "uint16"
     min_value: float = 0
     max_value: float = 100
@@ -517,6 +517,16 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
                     address=0x0881,
                     min_value=-20, max_value=20, step=0.1, unit="kW",
                     icon="mdi:flash"),
+
+    # Smart export / smart charge params (dispatch-only, no direct register write)
+    ModbusNumberDef("max_export_power", "Max Export Power",
+                    address=None,
+                    min_value=0, max_value=20, step=0.1, unit="kW",
+                    icon="mdi:transmission-tower-export"),
+    ModbusNumberDef("max_import_power", "Max Import Power",
+                    address=None,
+                    min_value=0, max_value=20, step=0.1, unit="kW",
+                    icon="mdi:transmission-tower-import"),
 
     # Charging period times (writable)
     ModbusNumberDef("charging_period_1_start_hour", "Charging Period 1 Start Hour",

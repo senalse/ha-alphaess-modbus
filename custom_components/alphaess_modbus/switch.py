@@ -23,6 +23,8 @@ _MUTEX_SWITCHES = [
     "force_export",
     "dispatch",
     "excess_export",
+    "smart_export",
+    "smart_charge",
 ]
 
 SWITCH_DEFS = [
@@ -32,6 +34,8 @@ SWITCH_DEFS = [
     {"key": "dispatch",            "name": "Dispatch",             "icon": "mdi:button-pointer"},
     {"key": "excess_export",       "name": "Excess Export",        "icon": "mdi:solar-power"},
     {"key": "excess_export_pause", "name": "Excess Export Pause",  "icon": "mdi:pause-circle"},
+    {"key": "smart_export",        "name": "Smart Export",         "icon": "mdi:transmission-tower-export"},
+    {"key": "smart_charge",        "name": "Smart Charge",         "icon": "mdi:transmission-tower-import"},
 ]
 
 
@@ -110,6 +114,10 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                 await self._start_dispatch()
             elif self.switch_key == "excess_export":
                 await self._start_excess_export()
+            elif self.switch_key == "smart_export":
+                await self._start_smart_export()
+            elif self.switch_key == "smart_charge":
+                await self._start_smart_charge()
         except Exception as err:
             _LOGGER.error("Failed to start %s: %s", self.switch_key, err)
             self._is_on = False
@@ -324,3 +332,64 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                 await excess_sw._start_excess_export()
             except Exception as err:
                 _LOGGER.error("Failed to resume excess_export after pause: %s", err)
+
+    # ------------------------------------------------------------------
+    # Smart Export
+    # ------------------------------------------------------------------
+
+    async def _start_smart_export(self) -> None:
+        house_load_w = self._coordinator.data.get("current_house_load") if self._coordinator.data else None
+        pv_production_w = self._coordinator.data.get("current_pv_production") if self._coordinator.data else None
+        if house_load_w is None or pv_production_w is None:
+            self._schedule_smart_refresh("smart_export")
+            return
+        max_export_kw = self._num("max_export_power", 5.0)
+        cutoff_soc = self._num("force_export_cutoff_soc", 10.0)
+        soc_raw = int(cutoff_soc / DISPATCH_SOC_SCALE)
+        charge_power_w = max(0, int(max_export_kw * 1000) + int(house_load_w) - int(pv_production_w))
+        power_raw = int(32000 + charge_power_w)
+        await self._coordinator.async_write_dispatch([
+            1, 0, power_raw, 0, 32000, DISPATCH_MODE_SOC_CONTROL, soc_raw, 0, 30,
+        ])
+        self._schedule_smart_refresh("smart_export")
+
+    # ------------------------------------------------------------------
+    # Smart Charge
+    # ------------------------------------------------------------------
+
+    async def _start_smart_charge(self) -> None:
+        house_load_w = self._coordinator.data.get("current_house_load") if self._coordinator.data else None
+        pv_production_w = self._coordinator.data.get("current_pv_production") if self._coordinator.data else None
+        if house_load_w is None or pv_production_w is None:
+            self._schedule_smart_refresh("smart_charge")
+            return
+        max_import_kw = self._num("max_import_power", 5.0)
+        cutoff_soc = self._num("force_charging_cutoff_soc", 100.0)
+        soc_raw = int(cutoff_soc / DISPATCH_SOC_SCALE)
+        charge_power_w = max(0, int(max_import_kw * 1000) - int(house_load_w) + int(pv_production_w))
+        power_raw = int(32000 - charge_power_w)
+        await self._coordinator.async_write_dispatch([
+            1, 0, power_raw, 0, 32000, DISPATCH_MODE_SOC_CONTROL, soc_raw, 0, 30,
+        ])
+        self._schedule_smart_refresh("smart_charge")
+
+    # ------------------------------------------------------------------
+    # Shared 30s refresh for smart switches
+    # ------------------------------------------------------------------
+
+    def _schedule_smart_refresh(self, switch_key: str) -> None:
+        self._cancel_timer()
+        loop = self.hass.loop
+
+        async def _refresh():
+            if not self._is_on:
+                return
+            if switch_key == "smart_export":
+                await self._start_smart_export()
+            else:
+                await self._start_smart_charge()
+
+        def _callback():
+            asyncio.ensure_future(_refresh(), loop=loop)
+
+        self._timer_cancel = loop.call_later(30, _callback)

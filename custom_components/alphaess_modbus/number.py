@@ -25,14 +25,18 @@ DISPATCH_PARAM_KEYS = {
     "dispatch_cutoff_soc",
     "dispatch_duration",
     "dispatch_power",
+    "max_export_power",
+    "max_import_power",
 }
 
-# Maps param key prefix to the switch that owns it
+# Maps param key prefix (or exact key) to the switch that owns it
 _PARAM_SWITCH = {
     "force_charging": "force_charging",
     "force_discharging": "force_discharging",
     "force_export": "force_export",
     "dispatch": "dispatch",
+    "max_export_power": "smart_export",
+    "max_import_power": "smart_charge",
 }
 
 
@@ -87,6 +91,9 @@ class AlphaESSNumber(RestoreEntity, NumberEntity):
 
         if self._reg.key in DISPATCH_PARAM_KEYS:
             await self._refire_if_active()
+            return
+
+        if self._reg.address is None:
             return
 
         # Direct single-register write
