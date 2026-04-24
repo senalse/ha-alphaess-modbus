@@ -157,7 +157,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
 
     def _get_dispatch_mode(self) -> int:
         """Read the dispatch mode value from the select entity option string e.g. 'Load Following (3)'."""
-        entity_id = "select.alphaess_dispatch_mode"
+        entity_id = "select.alphaess_inverter_dispatch_mode"
         state = self.hass.states.get(entity_id)
         if state and state.state not in ("unknown", "unavailable"):
             try:
