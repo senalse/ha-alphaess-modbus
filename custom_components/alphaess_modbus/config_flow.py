@@ -3,13 +3,13 @@ from __future__ import annotations
 import logging
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL
+from homeassistant.const import CONF_HOST, CONF_PORT
 try:
     from homeassistant.config_entries import ConfigFlowResult as FlowResult
 except ImportError:
     from homeassistant.data_entry_flow import FlowResult  # HA < 2024.4
 
-from .const import DEFAULT_PORT, DEFAULT_SLAVE, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import DEFAULT_PORT, DEFAULT_SLAVE, DOMAIN
 from .modbus_client import AlphaESSModbusClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,7 +20,6 @@ STEP_SCHEMA = vol.Schema({
     vol.Required(CONF_HOST): str,
     vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.Coerce(int),
     vol.Required(CONF_SLAVE_ID, default=DEFAULT_SLAVE): vol.Coerce(int),
-    vol.Required(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.Coerce(int),
 })
 
 
