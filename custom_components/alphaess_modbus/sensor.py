@@ -106,7 +106,7 @@ class AlphaESSCalculatedSensor(CoordinatorEntity[AlphaESSCoordinator], SensorEnt
         keys = ["pv1_power", "pv2_power", "pv3_power", "pv4_power", "active_power_pv_meter"]
         if any(d.get(k) is None for k in keys):
             return None
-        return sum(int(d[k]) for k in keys)
+        return max(0, sum(int(d[k]) for k in keys))
 
     @property
     def native_value(self):
