@@ -47,7 +47,7 @@ async def async_setup_entry(
 
 
 def _get_number(hass: HomeAssistant, entry_id: str, key: str, default: float) -> float:
-    entity_id = f"number.alphaess_{key}"
+    entity_id = f"number.alphaess_inverter_{key}"
     state = hass.states.get(entity_id)
     if state and state.state not in ("unknown", "unavailable"):
         try:
