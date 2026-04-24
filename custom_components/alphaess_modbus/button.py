@@ -79,12 +79,19 @@ class AlphaESSButton(ButtonEntity):
         any_on = any(sw.is_on for key, sw in switches.items() if key in _MUTEX_SWITCHES)
 
         if dispatch_on and not any_on:
-            # Dispatch running on inverter but no switch claims it — mark generic dispatch as on
-            sw = switches.get("dispatch")
+            # Infer which switch to mark based on active power direction
+            power = (self._coordinator.data or {}).get("dispatch_active_power", 0)
+            if power > 0:
+                inferred_key = "force_export"
+            elif power < 0:
+                inferred_key = "force_charging"
+            else:
+                inferred_key = "dispatch"
+            sw = switches.get(inferred_key)
             if sw:
                 sw._is_on = True
                 sw.async_write_ha_state()
-                _LOGGER.info("sync_dispatch_state: dispatch active on inverter, marked dispatch switch on")
+                _LOGGER.info("sync_dispatch_state: dispatch active (power=%s W), marked %s on", power, inferred_key)
         elif not dispatch_on:
             # Inverter dispatch is off — clear any switches still showing on in HA
             cleared = []
