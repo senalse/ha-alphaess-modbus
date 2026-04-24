@@ -27,6 +27,14 @@ DISPATCH_PARAM_KEYS = {
     "dispatch_power",
 }
 
+# Maps param key prefix to the switch that owns it
+_PARAM_SWITCH = {
+    "force_charging": "force_charging",
+    "force_discharging": "force_discharging",
+    "force_export": "force_export",
+    "dispatch": "dispatch",
+}
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
@@ -48,6 +56,7 @@ class AlphaESSNumber(RestoreEntity, NumberEntity):
         reg: ModbusNumberDef,
     ) -> None:
         self._coordinator = coordinator
+        self._entry = entry
         self._reg = reg
         self._attr_unique_id = f"{entry.entry_id}_{reg.key}"
         self._attr_name = reg.name
@@ -77,8 +86,20 @@ class AlphaESSNumber(RestoreEntity, NumberEntity):
         self.async_write_ha_state()
 
         if self._reg.key in DISPATCH_PARAM_KEYS:
-            # Value is stored in state; used by switch entities when building dispatch commands.
+            await self._refire_if_active()
             return
 
         # Direct single-register write
         await self._coordinator.async_write_register(self._reg.address, int(value))
+
+    async def _refire_if_active(self) -> None:
+        switch_key = next(
+            (sw for prefix, sw in _PARAM_SWITCH.items() if self._reg.key.startswith(prefix)),
+            None,
+        )
+        if not switch_key:
+            return
+        switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+        sw = switches.get(switch_key)
+        if sw and sw.is_on:
+            await sw.async_turn_on()

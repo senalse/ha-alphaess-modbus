@@ -35,6 +35,7 @@ class AlphaESSSelect(RestoreEntity, SelectEntity):
         reg: ModbusSelectDef,
     ) -> None:
         self._coordinator = coordinator
+        self._entry = entry
         self._reg = reg
         self._attr_unique_id = f"{entry.entry_id}_{reg.key}"
         self._attr_name = reg.name
@@ -62,3 +63,9 @@ class AlphaESSSelect(RestoreEntity, SelectEntity):
         idx = self._reg.options.index(option)
         value = self._reg.values[idx]
         await self._coordinator.async_write_register(self._reg.address, value)
+
+        if self._reg.key == "dispatch_mode":
+            switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+            sw = switches.get("dispatch")
+            if sw and sw.is_on:
+                await sw.async_turn_on()
