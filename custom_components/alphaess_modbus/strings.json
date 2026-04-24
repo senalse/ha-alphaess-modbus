@@ -7,8 +7,7 @@
         "data": {
           "host": "Inverter IP Address",
           "port": "Modbus Port",
-          "slave_id": "Slave ID",
-          "scan_interval": "Scan Interval (seconds)"
+          "slave_id": "Slave ID"
         }
       }
     },

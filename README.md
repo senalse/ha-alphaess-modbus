@@ -64,9 +64,24 @@ Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewl
 | Inverter IP Address | — | Use a DHCP reservation for a stable address |
 | Modbus Port | `502` | Change only if you've modified the inverter setting |
 | Slave ID | `85` | Standard for AlphaESS inverters |
-| Scan Interval | `30` | Seconds between polls (fast sensors override this) |
 
 4. Click **Submit** — Home Assistant will test the connection before saving
+
+---
+
+## Poll Intervals
+
+Each sensor has a fixed poll interval hardcoded in the integration. The coordinator runs a 1-second master loop and skips registers that aren't due yet.
+
+| Interval | Sensors |
+|----------|---------|
+| **1 s** | Grid Power, Battery Power, Active Power PV Meter, PV String 1–4 Power |
+| **5 s** | Grid Power Phase A/B/C, Inverter Work Mode, System Fault, Dispatch registers |
+| **10 s** | Battery SoC, Battery SoH, Battery cell temps, Battery max charge/discharge current |
+| **30 s** | Grid Frequency, Inverter Power L1/L2/L3, Charging/Discharging period times, Max Feed to Grid |
+| **60 s** | Inverter/Battery Voltage & Current, Energy Totals, Temperatures, Version strings, Network settings |
+
+There is no user-configurable poll interval — intervals are tuned per-sensor to balance responsiveness against the inverter's one-connection limit.
 
 ---
 
