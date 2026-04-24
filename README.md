@@ -19,10 +19,13 @@ Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewl
 - **Force Discharging** — discharge battery at configurable power and duration
 - **Force Export** — export to grid at configurable power
 - **Excess Export** — prioritise grid export over battery charging to reduce PV clipping
+- **Smart Export** — dynamically exports up to a configurable max power, accounting for live house load and PV so grid export stays at the target without overloading the inverter
+- **Smart Charge** — dynamically charges from grid up to a configurable max power, offset by live PV production so you only import what PV can't cover
 - **Charging / Discharging time periods** — configure up to two charge and discharge windows
 - **Dispatch mode selector** — Battery only, SoC Control, Load Following, Maximise Output, and more
 - **Max Feed to Grid** — set grid export limit as % of installed PV capacity
 - **Date & Time sync** — sync inverter clock to Home Assistant system time
+- **Sync Dispatch State** — reconcile HA switch states with the inverter after a restart
 
 ---
 
@@ -107,18 +110,30 @@ There is no user-configurable poll interval — intervals are tuned per-sensor t
 
 | Entity | Type | Description |
 |--------|------|-------------|
-| Force Charging | Switch | Charge battery from grid |
-| Force Discharging | Switch | Discharge battery |
-| Force Export | Switch | Export to grid |
-| Excess Export | Switch | Maximise PV export, reduce clipping |
-| Force Charging Power | Number | Power in kW (0–20 kW) |
+| Force Charging | Switch | Charge battery from grid at configured power/duration/cutoff SoC |
+| Force Discharging | Switch | Discharge battery at configured power/duration/cutoff SoC |
+| Force Export | Switch | Export to grid at configured power/duration/cutoff SoC |
+| Excess Export | Switch | Maximise PV export, reduce clipping (re-fires every 4 min) |
+| Excess Export Pause | Switch | Temporarily pause Excess Export without losing its active state |
+| Smart Export | Switch | Dynamically exports up to Max Export Power, adjusted for live house load and PV (re-fires every 30 s) |
+| Smart Charge | Switch | Dynamically charges up to Max Import Power from grid, offset by live PV production (re-fires every 30 s) |
+| Force Charging Power | Number | Charging power in kW |
 | Force Charging Duration | Number | Duration in minutes |
 | Force Charging Cutoff SoC | Number | Stop charging at this SoC % |
-| Dispatch Mode | Select | Operating mode for dispatch |
+| Force Discharging Power | Number | Discharging power in kW |
+| Force Discharging Duration | Number | Duration in minutes |
+| Force Discharging Cutoff SoC | Number | Stop discharging at this SoC % |
+| Force Export Power | Number | Export power in kW |
+| Force Export Duration | Number | Duration in minutes |
+| Force Export Cutoff SoC | Number | Stop exporting at this SoC % |
+| Max Export Power | Number | Target grid export for Smart Export (kW) |
+| Max Import Power | Number | Target grid import for Smart Charge (kW) |
+| Dispatch Mode | Select | Operating mode for the generic Dispatch switch |
 | Charging / Discharging Settings | Select | Enable/disable time period control |
 | Max Feed to Grid | Number | Grid export limit (% of PV capacity) |
-| Dispatch Reset | Button | Reset all dispatch registers |
-| Synchronise Date & Time | Button | Sync inverter clock to HA time |
+| Dispatch Reset | Button | Reset all dispatch registers immediately |
+| Synchronise Date & Time | Button | Sync inverter clock to HA system time |
+| Sync Dispatch State | Button | Reconcile HA switch states with the inverter (use after HA restart if dispatch was running) |
 
 ---
 
