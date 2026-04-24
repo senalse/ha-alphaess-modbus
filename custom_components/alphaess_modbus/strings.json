@@ -209,6 +209,10 @@
       "synchronise_date_time": {
         "name": "Synchronise Date & Time",
         "description": "Writes the current Home Assistant date and time to the inverter's internal clock."
+      },
+      "sync_dispatch_state": {
+        "name": "Sync Dispatch State",
+        "description": "Reconciles HA switch states with the inverter. If dispatch is running but no switch shows on (e.g. after an integration reload), marks the Dispatch switch as on. If no dispatch is running but a switch shows on, clears it."
       }
     }
   }
