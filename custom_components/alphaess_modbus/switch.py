@@ -75,6 +75,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self.switch_key = definition["key"]
         self._attr_unique_id = f"{entry.entry_id}_{self.switch_key}"
         self._attr_name = definition["name"]
+        self._attr_translation_key = self.switch_key
         self._attr_icon = definition["icon"]
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
         self._is_on = False

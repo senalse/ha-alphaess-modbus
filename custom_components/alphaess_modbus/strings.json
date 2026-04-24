@@ -17,5 +17,199 @@
     "abort": {
       "already_configured": "This inverter is already configured."
     }
+  },
+  "entity": {
+    "switch": {
+      "force_charging": {
+        "name": "Force Charging",
+        "description": "Forces the battery to charge from the grid at the configured power. Stops after the set duration or when SoC reaches the cutoff. Turns off any other active dispatch switch."
+      },
+      "force_discharging": {
+        "name": "Force Discharging",
+        "description": "Forces the battery to discharge at the configured power. Stops after the set duration or when SoC falls to the cutoff. Turns off any other active dispatch switch."
+      },
+      "force_export": {
+        "name": "Force Export",
+        "description": "Forces the battery to discharge to the grid at the configured power. Stops after the set duration or when SoC falls to the cutoff. Turns off any other active dispatch switch."
+      },
+      "dispatch": {
+        "name": "Dispatch",
+        "description": "Sends a manual dispatch command using the configured power, mode, SoC target and duration. Turns off any other active dispatch switch."
+      },
+      "excess_export": {
+        "name": "Excess Export",
+        "description": "Dynamically exports excess PV and battery power to keep net grid flow near zero. Recalculates every 4 minutes. Turns off any other active dispatch switch."
+      },
+      "excess_export_pause": {
+        "name": "Excess Export Pause",
+        "description": "Temporarily pauses Excess Export without cancelling it. Turn off to immediately resume exporting."
+      },
+      "smart_export": {
+        "name": "Smart Export",
+        "description": "Exports up to Max Export Power to the grid, dynamically accounting for live house load and PV production. Recalculates every 30 seconds. Turns off any other active dispatch switch."
+      },
+      "smart_charge": {
+        "name": "Smart Charge",
+        "description": "Charges the battery up to Max Import Power from the grid, offset by live PV production. Recalculates every 30 seconds. Turns off any other active dispatch switch."
+      }
+    },
+    "number": {
+      "charging_cutoff_soc": {
+        "name": "Charging Cutoff SoC",
+        "description": "SoC at which the inverter's scheduled grid charging (time period control) stops."
+      },
+      "discharging_cutoff_soc": {
+        "name": "Discharging Cutoff SoC",
+        "description": "Minimum SoC at which the inverter's scheduled battery discharge stops."
+      },
+      "max_feed_to_grid": {
+        "name": "Max Feed to Grid",
+        "description": "Maximum percentage of inverter capacity that can be exported to the grid."
+      },
+      "force_charging_power": {
+        "name": "Force Charging Power",
+        "description": "Charging rate from the grid when Force Charging is active."
+      },
+      "force_charging_cutoff_soc": {
+        "name": "Force Charging Cutoff SoC",
+        "description": "Force Charging stops when the battery reaches this SoC."
+      },
+      "force_charging_duration": {
+        "name": "Force Charging Duration",
+        "description": "How long Force Charging runs before switching off automatically."
+      },
+      "force_discharging_power": {
+        "name": "Force Discharging Power",
+        "description": "Discharge rate when Force Discharging is active."
+      },
+      "force_discharging_cutoff_soc": {
+        "name": "Force Discharging Cutoff SoC",
+        "description": "Force Discharging stops when the battery falls to this SoC."
+      },
+      "force_discharging_duration": {
+        "name": "Force Discharging Duration",
+        "description": "How long Force Discharging runs before switching off automatically."
+      },
+      "force_export_power": {
+        "name": "Force Export Power",
+        "description": "Grid export rate when Force Export is active."
+      },
+      "force_export_cutoff_soc": {
+        "name": "Force Export Cutoff SoC",
+        "description": "Force Export stops when the battery falls to this SoC. Also used as the SoC floor by Smart Export."
+      },
+      "force_export_duration": {
+        "name": "Force Export Duration",
+        "description": "How long Force Export runs before switching off automatically."
+      },
+      "dispatch_power": {
+        "name": "Dispatch Power",
+        "description": "Power level for the Dispatch switch. Positive = discharge / export, negative = charge / import."
+      },
+      "dispatch_cutoff_soc": {
+        "name": "Dispatch Cutoff SoC",
+        "description": "Dispatch stops when the battery reaches this SoC (SoC Control mode only)."
+      },
+      "dispatch_duration": {
+        "name": "Dispatch Duration",
+        "description": "How long the Dispatch switch runs before switching off automatically."
+      },
+      "max_export_power": {
+        "name": "Max Export Power",
+        "description": "Maximum grid export rate for the Smart Export switch."
+      },
+      "max_import_power": {
+        "name": "Max Import Power",
+        "description": "Maximum grid import rate for the Smart Charge switch."
+      },
+      "charging_period_1_start_hour": {
+        "name": "Charging Period 1 Start Hour",
+        "description": "Hour component of the charging period 1 start time (0–23)."
+      },
+      "charging_period_1_stop_hour": {
+        "name": "Charging Period 1 Stop Hour",
+        "description": "Hour component of the charging period 1 end time (0–23)."
+      },
+      "charging_period_2_start_hour": {
+        "name": "Charging Period 2 Start Hour",
+        "description": "Hour component of the charging period 2 start time (0–23)."
+      },
+      "charging_period_2_stop_hour": {
+        "name": "Charging Period 2 Stop Hour",
+        "description": "Hour component of the charging period 2 end time (0–23)."
+      },
+      "charging_period_1_start_minute": {
+        "name": "Charging Period 1 Start Minute",
+        "description": "Minute component of the charging period 1 start time (0–59)."
+      },
+      "charging_period_1_stop_minute": {
+        "name": "Charging Period 1 Stop Minute",
+        "description": "Minute component of the charging period 1 end time (0–59)."
+      },
+      "charging_period_2_start_minute": {
+        "name": "Charging Period 2 Start Minute",
+        "description": "Minute component of the charging period 2 start time (0–59)."
+      },
+      "charging_period_2_stop_minute": {
+        "name": "Charging Period 2 Stop Minute",
+        "description": "Minute component of the charging period 2 end time (0–59)."
+      },
+      "discharging_period_1_start_hour": {
+        "name": "Discharging Period 1 Start Hour",
+        "description": "Hour component of the discharging period 1 start time (0–23)."
+      },
+      "discharging_period_1_stop_hour": {
+        "name": "Discharging Period 1 Stop Hour",
+        "description": "Hour component of the discharging period 1 end time (0–23)."
+      },
+      "discharging_period_2_start_hour": {
+        "name": "Discharging Period 2 Start Hour",
+        "description": "Hour component of the discharging period 2 start time (0–23)."
+      },
+      "discharging_period_2_stop_hour": {
+        "name": "Discharging Period 2 Stop Hour",
+        "description": "Hour component of the discharging period 2 end time (0–23)."
+      },
+      "discharging_period_1_start_minute": {
+        "name": "Discharging Period 1 Start Minute",
+        "description": "Minute component of the discharging period 1 start time (0–59)."
+      },
+      "discharging_period_1_stop_minute": {
+        "name": "Discharging Period 1 Stop Minute",
+        "description": "Minute component of the discharging period 1 end time (0–59)."
+      },
+      "discharging_period_2_start_minute": {
+        "name": "Discharging Period 2 Start Minute",
+        "description": "Minute component of the discharging period 2 start time (0–59)."
+      },
+      "discharging_period_2_stop_minute": {
+        "name": "Discharging Period 2 Stop Minute",
+        "description": "Minute component of the discharging period 2 end time (0–59)."
+      }
+    },
+    "select": {
+      "charging_discharging_settings": {
+        "name": "Charging / Discharging Settings",
+        "description": "Enables or disables the inverter's built-in scheduled grid charging and battery discharge time windows."
+      },
+      "dispatch_mode": {
+        "name": "Dispatch Mode",
+        "description": "Algorithm the inverter uses while a Dispatch command is active. SoC Control (2) is used by all dispatch switches in this integration."
+      },
+      "inverter_ac_limit": {
+        "name": "Inverter AC Limit",
+        "description": "Your inverter's maximum AC output rating. Used by Excess Export to cap dispatch power and avoid overloading the inverter."
+      }
+    },
+    "button": {
+      "dispatch_reset": {
+        "name": "Dispatch Reset",
+        "description": "Immediately stops any active dispatch command and returns the inverter to normal operation."
+      },
+      "synchronise_date_time": {
+        "name": "Synchronise Date & Time",
+        "description": "Writes the current Home Assistant date and time to the inverter's internal clock."
+      }
+    }
   }
 }
