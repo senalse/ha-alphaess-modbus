@@ -16,6 +16,26 @@ from .coordinator import AlphaESSCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+
+def _calc_pv_production(data: dict) -> int | None:
+    keys = ["pv1_power", "pv2_power", "pv3_power", "pv4_power", "active_power_pv_meter"]
+    if any(data.get(k) is None for k in keys):
+        return None
+    return max(0, sum(int(data[k]) for k in keys))
+
+
+def _calc_house_load(data: dict) -> int | None:
+    grid = data.get("power_grid")
+    if grid is None:
+        return None
+    if float(data.get("inverter_work_mode", 0)) == 2:
+        return round(float(grid))
+    pv = _calc_pv_production(data)
+    battery = data.get("power_battery")
+    if pv is None or battery is None:
+        return None
+    return max(0, int(pv) + int(battery) + int(grid))
+
 # Switches that are mutually exclusive — turning one on turns all others off.
 _MUTEX_SWITCHES = [
     "force_charging",
@@ -184,6 +204,8 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         cutoff_soc = self._num("force_charging_cutoff_soc", 100.0)
         duration_min = self._num("force_charging_duration", 120.0)
         duration_s = int(duration_min * 60)
+        if duration_s <= 0:
+            raise ValueError("Force charging duration is 0 — set number.alphaess_inverter_force_charging_duration to a non-zero value")
         soc_raw = int(cutoff_soc / DISPATCH_SOC_SCALE)
         power_raw = int(32000 - power_kw * 1000)
 
@@ -206,6 +228,8 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         cutoff_soc = self._num("force_discharging_cutoff_soc", 10.0)
         duration_min = self._num("force_discharging_duration", 120.0)
         duration_s = int(duration_min * 60)
+        if duration_s <= 0:
+            raise ValueError("Force discharging duration is 0 — set number.alphaess_inverter_force_discharging_duration to a non-zero value")
         soc_raw = int(cutoff_soc / DISPATCH_SOC_SCALE)
         power_raw = int(32000 + power_kw * 1000)
 
@@ -228,6 +252,8 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         cutoff_soc = self._num("force_export_cutoff_soc", 100.0)
         duration_min = self._num("force_export_duration", 120.0)
         duration_s = int(duration_min * 60)
+        if duration_s <= 0:
+            raise ValueError("Force export duration is 0 — set number.alphaess_inverter_force_export_duration to a non-zero value")
         soc_raw = int(cutoff_soc / DISPATCH_SOC_SCALE)
         power_raw = int(32000 + power_kw * 1000)
 
@@ -339,8 +365,9 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
     # ------------------------------------------------------------------
 
     async def _start_smart_export(self) -> None:
-        house_load_w = self._coordinator.data.get("current_house_load") if self._coordinator.data else None
-        pv_production_w = self._coordinator.data.get("current_pv_production") if self._coordinator.data else None
+        d = self._coordinator.data or {}
+        pv_production_w = _calc_pv_production(d)
+        house_load_w = _calc_house_load(d)
         if house_load_w is None or pv_production_w is None:
             self._schedule_smart_refresh("smart_export")
             return
@@ -359,8 +386,9 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
     # ------------------------------------------------------------------
 
     async def _start_smart_charge(self) -> None:
-        house_load_w = self._coordinator.data.get("current_house_load") if self._coordinator.data else None
-        pv_production_w = self._coordinator.data.get("current_pv_production") if self._coordinator.data else None
+        d = self._coordinator.data or {}
+        pv_production_w = _calc_pv_production(d)
+        house_load_w = _calc_house_load(d)
         if house_load_w is None or pv_production_w is None:
             self._schedule_smart_refresh("smart_charge")
             return
