@@ -7,7 +7,7 @@ DEFAULT_SLAVE = 85
 DEFAULT_SCAN_INTERVAL = 30
 MODBUS_HUB = "alphaess_modbus_hub"
 
-PLATFORMS = ["sensor", "number", "select", "switch", "button"]
+PLATFORMS = ["sensor", "number", "select", "switch", "button", "time"]
 
 # ---------------------------------------------------------------------------
 # Register definition dataclasses
@@ -63,6 +63,15 @@ class ModbusSelectDef:
     options: list[str] = field(default_factory=list)
     values: list[int] = field(default_factory=list)
     icon: str | None = None
+
+
+@dataclass
+class ModbusTimeDef:
+    key: str
+    name: str
+    hour_address: int
+    minute_address: int
+    icon: str = "mdi:clock-outline"
 
 
 # ---------------------------------------------------------------------------
@@ -528,57 +537,8 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
                     min_value=0, max_value=20, step=0.1, unit="kW",
                     icon="mdi:transmission-tower-import"),
 
-    # Charging period times (writable)
-    ModbusNumberDef("charging_period_1_start_hour", "Charging Period 1 Start Hour",
-                    0x0856, min_value=0, max_value=23, step=1, unit="h",
-                    icon="mdi:clock-start"),
-    ModbusNumberDef("charging_period_1_stop_hour", "Charging Period 1 Stop Hour",
-                    0x0857, min_value=0, max_value=23, step=1, unit="h",
-                    icon="mdi:clock-end"),
-    ModbusNumberDef("charging_period_2_start_hour", "Charging Period 2 Start Hour",
-                    0x0858, min_value=0, max_value=23, step=1, unit="h",
-                    icon="mdi:clock-start"),
-    ModbusNumberDef("charging_period_2_stop_hour", "Charging Period 2 Stop Hour",
-                    0x0859, min_value=0, max_value=23, step=1, unit="h",
-                    icon="mdi:clock-end"),
-    ModbusNumberDef("charging_period_1_start_minute", "Charging Period 1 Start Minute",
-                    0x085E, min_value=0, max_value=59, step=1, unit="min",
-                    icon="mdi:clock-start"),
-    ModbusNumberDef("charging_period_1_stop_minute", "Charging Period 1 Stop Minute",
-                    0x085F, min_value=0, max_value=59, step=1, unit="min",
-                    icon="mdi:clock-end"),
-    ModbusNumberDef("charging_period_2_start_minute", "Charging Period 2 Start Minute",
-                    0x0860, min_value=0, max_value=59, step=1, unit="min",
-                    icon="mdi:clock-start"),
-    ModbusNumberDef("charging_period_2_stop_minute", "Charging Period 2 Stop Minute",
-                    0x0861, min_value=0, max_value=59, step=1, unit="min",
-                    icon="mdi:clock-end"),
-
-    # Discharging period times (writable)
-    ModbusNumberDef("discharging_period_1_start_hour", "Discharging Period 1 Start Hour",
-                    0x0851, min_value=0, max_value=23, step=1, unit="h",
-                    icon="mdi:clock-start"),
-    ModbusNumberDef("discharging_period_1_stop_hour", "Discharging Period 1 Stop Hour",
-                    0x0852, min_value=0, max_value=23, step=1, unit="h",
-                    icon="mdi:clock-end"),
-    ModbusNumberDef("discharging_period_2_start_hour", "Discharging Period 2 Start Hour",
-                    0x0853, min_value=0, max_value=23, step=1, unit="h",
-                    icon="mdi:clock-start"),
-    ModbusNumberDef("discharging_period_2_stop_hour", "Discharging Period 2 Stop Hour",
-                    0x0854, min_value=0, max_value=23, step=1, unit="h",
-                    icon="mdi:clock-end"),
-    ModbusNumberDef("discharging_period_1_start_minute", "Discharging Period 1 Start Minute",
-                    0x085A, min_value=0, max_value=59, step=1, unit="min",
-                    icon="mdi:clock-start"),
-    ModbusNumberDef("discharging_period_1_stop_minute", "Discharging Period 1 Stop Minute",
-                    0x085B, min_value=0, max_value=59, step=1, unit="min",
-                    icon="mdi:clock-end"),
-    ModbusNumberDef("discharging_period_2_start_minute", "Discharging Period 2 Start Minute",
-                    0x085C, min_value=0, max_value=59, step=1, unit="min",
-                    icon="mdi:clock-start"),
-    ModbusNumberDef("discharging_period_2_stop_minute", "Discharging Period 2 Stop Minute",
-                    0x085D, min_value=0, max_value=59, step=1, unit="min",
-                    icon="mdi:clock-end"),
+    # Charging/discharging period times are handled by the time platform (time.py)
+    # using ModbusTimeDef entries in TIME_REGISTERS below.
 ]
 
 # ---------------------------------------------------------------------------
@@ -624,6 +584,22 @@ SELECT_REGISTERS: list[ModbusSelectDef] = [
         values=[3000, 4000, 4600, 5000, 6000, 8000, 10000, 12000, 15000, 20000],
         icon="mdi:transmission-tower",
     ),
+]
+
+# ---------------------------------------------------------------------------
+# TIME REGISTERS (charging/discharging period start & stop times)
+# Each entry writes hour + minute as separate registers but presents as hh:mm.
+# The underlying sensor reads (hour_key / minute_key) are in SENSOR_REGISTERS.
+# ---------------------------------------------------------------------------
+TIME_REGISTERS: list[ModbusTimeDef] = [
+    ModbusTimeDef("charging_period_1_start",    "Charging Period 1 Start Time",    0x0856, 0x085E, "mdi:clock-start"),
+    ModbusTimeDef("charging_period_1_stop",     "Charging Period 1 Stop Time",     0x0857, 0x085F, "mdi:clock-end"),
+    ModbusTimeDef("charging_period_2_start",    "Charging Period 2 Start Time",    0x0858, 0x0860, "mdi:clock-start"),
+    ModbusTimeDef("charging_period_2_stop",     "Charging Period 2 Stop Time",     0x0859, 0x0861, "mdi:clock-end"),
+    ModbusTimeDef("discharging_period_1_start", "Discharging Period 1 Start Time", 0x0851, 0x085A, "mdi:clock-start"),
+    ModbusTimeDef("discharging_period_1_stop",  "Discharging Period 1 Stop Time",  0x0852, 0x085B, "mdi:clock-end"),
+    ModbusTimeDef("discharging_period_2_start", "Discharging Period 2 Start Time", 0x0853, 0x085C, "mdi:clock-start"),
+    ModbusTimeDef("discharging_period_2_stop",  "Discharging Period 2 Stop Time",  0x0854, 0x085D, "mdi:clock-end"),
 ]
 
 # ---------------------------------------------------------------------------
