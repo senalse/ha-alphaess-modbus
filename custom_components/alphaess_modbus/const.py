@@ -76,7 +76,7 @@ class ModbusTimeDef:
 
 # ---------------------------------------------------------------------------
 # SENSOR REGISTERS
-# Source: integration_alpha_ess.yaml v10.4
+# Source: integration_alpha_ess.yaml v10.5
 # ---------------------------------------------------------------------------
 SENSOR_REGISTERS: list[ModbusSensorDef] = [
     # --- Measurements: system ---

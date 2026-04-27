@@ -14,7 +14,7 @@ Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewl
 
 ## Features
 
-- **90+ sensor entities enabled by default** (143 total) — real-time power flows, battery SoC/SoH, temperatures, voltages, energy totals, grid safety parameters, faults & warnings
+- **90 sensor entities enabled by default** (145 total) — real-time power flows, battery SoC/SoH, temperatures, voltages, energy totals, grid safety parameters, faults & warnings
 - **Force Charging** — charge battery from grid at configurable power (kW), duration, and cutoff SoC
 - **Force Discharging** — discharge battery at configurable power and duration
 - **Force Export** — export to grid at configurable power
@@ -79,10 +79,10 @@ Each sensor has a fixed poll interval hardcoded in the integration. The coordina
 | Interval | Sensors |
 |----------|---------|
 | **1 s** | Grid Power, Battery Power, Active Power PV Meter, PV String 1–4 Power |
-| **5 s** | Grid Power Phase A/B/C, Inverter Work Mode, System Fault, Dispatch registers |
-| **10 s** | Battery SoC, Battery SoH, Battery cell temps, Battery max charge/discharge current |
-| **30 s** | Grid Frequency, Inverter Power L1/L2/L3, Charging/Discharging period times, Max Feed to Grid |
-| **60 s** | Inverter/Battery Voltage & Current, Energy Totals, Temperatures, Version strings, Network settings |
+| **5 s** | Grid Power Phase A/B/C, Grid Voltage Phase A/B/C, Inverter Work Mode, Inverter Power L1/L2/L3 + total, System Fault, Inverter Warning 1/2, Inverter Fault 1/2, Battery Warning/Fault, Max Feed to Grid, Dispatch registers |
+| **10 s** | Battery SoC, Battery SoH, Battery min/max cell temps, Battery max charge/discharge current, Charging Time Period Control, Charging Cutoff SoC |
+| **30 s** | Grid Frequency, Charging/Discharging period start/stop times, Discharging Cutoff SoC |
+| **60 s** | Inverter Temperature, Battery Voltage/Current/Status/Remaining Time, PV String Voltage & Current, Energy Totals, Version strings, Network settings *(disabled by default)* |
 
 There is no user-configurable poll interval — intervals are tuned per-sensor to balance responsiveness against the inverter's one-connection limit.
 
@@ -99,12 +99,13 @@ There is no user-configurable poll interval — intervals are tuned per-sensor t
 | Grid Power | Power to/from grid (W, negative = export) |
 | Battery Power | Power to/from battery (W) |
 | PV String 1–4 Power | Power from each PV string (W) |
-| Current PV Production | Sum of all PV strings + PV meter (W) |
+| Current PV Production | Calculated — sum of all PV strings + PV meter (W) |
+| Current House Load | Calculated — net house consumption derived from grid, battery, and PV (W) |
 | Inverter Temperature | Inverter temperature (°C) |
 | Total Energy from PV | Lifetime PV generation (kWh) |
 | Total Energy Feed to Grid | Lifetime grid export (kWh) |
 | System Fault | Active fault code (0 = no fault) |
-| … and 50+ more | See the Devices page in HA for the full list |
+| … and 80+ more | See the Devices page in HA for the full list |
 
 ### Controls
 
@@ -113,24 +114,37 @@ There is no user-configurable poll interval — intervals are tuned per-sensor t
 | Force Charging | Switch | Charge battery from grid at configured power/duration/cutoff SoC |
 | Force Discharging | Switch | Discharge battery at configured power/duration/cutoff SoC |
 | Force Export | Switch | Export to grid at configured power/duration/cutoff SoC |
+| Dispatch | Switch | Generic dispatch — mode, power, SoC target, and duration all configurable independently |
 | Excess Export | Switch | Maximise PV export, reduce clipping (re-fires every 4 min) |
 | Excess Export Pause | Switch | Temporarily pause Excess Export without losing its active state |
 | Smart Export | Switch | Dynamically exports up to Max Export Power, adjusted for live house load and PV (re-fires every 30 s) |
 | Smart Charge | Switch | Dynamically charges up to Max Import Power from grid, offset by live PV production (re-fires every 30 s) |
-| Force Charging Power | Number | Charging power in kW |
-| Force Charging Duration | Number | Duration in minutes |
+| Force Charging Power | Number | Charging power in kW (0–20) |
+| Force Charging Duration | Number | Duration in minutes (0–480, step 5) |
 | Force Charging Cutoff SoC | Number | Stop charging at this SoC % |
-| Force Discharging Power | Number | Discharging power in kW |
-| Force Discharging Duration | Number | Duration in minutes |
+| Force Discharging Power | Number | Discharging power in kW (0–20) |
+| Force Discharging Duration | Number | Duration in minutes (0–480, step 5) |
 | Force Discharging Cutoff SoC | Number | Stop discharging at this SoC % |
-| Force Export Power | Number | Export power in kW |
-| Force Export Duration | Number | Duration in minutes |
+| Force Export Power | Number | Export power in kW (0–20) |
+| Force Export Duration | Number | Duration in minutes (0–480, step 5) |
 | Force Export Cutoff SoC | Number | Stop exporting at this SoC % |
+| Dispatch Power | Number | Dispatch power in kW (−20 to +20; negative = charge, positive = discharge/export) |
+| Dispatch Duration | Number | Duration in minutes (0–480, step 5) |
+| Dispatch Cutoff SoC | Number | SoC target % for the generic Dispatch switch |
 | Max Export Power | Number | Target grid export for Smart Export (kW) |
 | Max Import Power | Number | Target grid import for Smart Charge (kW) |
-| Dispatch Mode | Select | Operating mode for the generic Dispatch switch |
-| Charging / Discharging Settings | Select | Enable/disable time period control |
+| Dispatch Mode | Select | Operating mode for the generic Dispatch switch (Battery Only, SoC Control, Load Following, etc.) |
+| Charging / Discharging Settings | Select | Enable/disable time period control (Disable / Grid Charging / Discharge Time Control / Both) |
+| Inverter AC Limit | Select | Inverter AC output capacity (3–20 kW) — used by Excess Export and Smart Export to avoid overloading the inverter |
 | Max Feed to Grid | Number | Grid export limit (% of PV capacity) |
+| Charging Period 1 Start Time | Time | hh:mm — writes hour and minute registers independently |
+| Charging Period 1 Stop Time | Time | hh:mm |
+| Charging Period 2 Start Time | Time | hh:mm |
+| Charging Period 2 Stop Time | Time | hh:mm |
+| Discharging Period 1 Start Time | Time | hh:mm |
+| Discharging Period 1 Stop Time | Time | hh:mm |
+| Discharging Period 2 Start Time | Time | hh:mm |
+| Discharging Period 2 Stop Time | Time | hh:mm |
 | Dispatch Reset | Button | Reset all dispatch registers immediately |
 | Synchronise Date & Time | Button | Sync inverter clock to HA system time |
 | Sync Dispatch State | Button | Reconcile HA switch states with the inverter (use after HA restart if dispatch was running) |
@@ -183,7 +197,7 @@ Example Lovelace dashboard configurations are included in the [`examples/`](exam
 2. In Home Assistant go to **Settings → Dashboards → Add Dashboard**
 3. Switch to YAML mode and paste the contents of the example file, or use the **Raw configuration editor** to add the views to an existing dashboard
 
-> The dashboard files reference entity IDs created by this integration. All entity IDs follow the pattern `sensor.alphaess_*`, `switch.alphaess_*`, etc.
+> The dashboard files reference entity IDs created by this integration. All entity IDs follow the pattern `sensor.alphaess_inverter_*`, `switch.alphaess_inverter_*`, etc. (the device name is "AlphaESS Inverter", which Home Assistant uses as the entity ID prefix).
 
 ---
 
