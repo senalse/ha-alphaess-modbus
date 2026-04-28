@@ -104,7 +104,6 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._is_on = False
         self._timer_cancel: asyncio.TimerHandle | None = None
         self._duration_cancel: asyncio.TimerHandle | None = None
-        self._soc_unsub: Any | None = None
 
     async def async_added_to_hass(self) -> None:
         state = await self.async_get_last_state()
@@ -133,9 +132,19 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             if self.switch_key == "force_charging":
                 await self._start_force_charging()
             elif self.switch_key == "force_discharging":
+                duration_min = self._num("force_discharging_duration", 120.0)
+                duration_s = int(duration_min * 60)
+                if duration_s <= 0:
+                    raise ValueError("Force discharging duration is 0 — set number.alphaess_inverter_force_discharging_duration to a non-zero value")
                 await self._start_force_discharging()
+                self._schedule_duration_off(duration_s)
             elif self.switch_key == "force_export":
+                duration_min = self._num("force_export_duration", 120.0)
+                duration_s = int(duration_min * 60)
+                if duration_s <= 0:
+                    raise ValueError("Force export duration is 0 — set number.alphaess_inverter_force_export_duration to a non-zero value")
                 await self._start_force_export()
+                self._schedule_duration_off(duration_s)
             elif self.switch_key == "force_import":
                 duration_min = self._num("force_import_duration", 120.0)
                 duration_s = int(duration_min * 60)
@@ -186,9 +195,6 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         if self._duration_cancel:
             self._duration_cancel.cancel()
             self._duration_cancel = None
-        if self._soc_unsub:
-            self._soc_unsub()
-            self._soc_unsub = None
 
     def _cancel_refresh_timer(self) -> None:
         if self._timer_cancel:
@@ -234,41 +240,6 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                 pass
         return DISPATCH_MODE_SOC_CONTROL
 
-    def _start_soc_monitor(self, cutoff_soc: float, direction: str) -> None:
-        """Register a coordinator listener that fires _async_turn_off_silent when SOC crosses cutoff.
-
-        direction='below': stop when soc_battery <= cutoff_soc (discharge/export)
-        direction='above': stop when soc_battery >= cutoff_soc (charging)
-        """
-        if self._soc_unsub:
-            self._soc_unsub()
-            self._soc_unsub = None
-
-        def _handle_update() -> None:
-            if not self._is_on:
-                return
-            data = self._coordinator.data or {}
-            soc = data.get("soc_battery")
-            if soc is None:
-                return
-            soc = float(soc)
-            triggered = (
-                (direction == "below" and soc <= cutoff_soc)
-                or (direction == "above" and soc >= cutoff_soc)
-            )
-            if triggered:
-                _LOGGER.debug(
-                    "SOC %.1f%% reached %s cutoff %.1f%%, stopping %s early",
-                    soc, direction, cutoff_soc, self.switch_key,
-                )
-                unsub = self._soc_unsub
-                self._soc_unsub = None
-                if unsub:
-                    unsub()
-                asyncio.ensure_future(self._async_turn_off_silent(), loop=self.hass.loop)
-
-        self._soc_unsub = self._coordinator.async_add_listener(_handle_update)
-
     # ------------------------------------------------------------------
     # Force Charging
     # ------------------------------------------------------------------
@@ -292,57 +263,72 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             0, duration_s,
         ])
         self._schedule_auto_off(duration_s)
-        self._start_soc_monitor(cutoff_soc, "above")
 
     # ------------------------------------------------------------------
     # Force Discharging
     # ------------------------------------------------------------------
 
     async def _start_force_discharging(self) -> None:
+        data = self._coordinator.data or {}
+        soc = data.get("soc_battery")
         power_kw = self._num("force_discharging_power", 5.0)
         cutoff_soc = self._num("force_discharging_cutoff_soc", 10.0)
-        duration_min = self._num("force_discharging_duration", 120.0)
-        duration_s = int(duration_min * 60)
-        if duration_s <= 0:
-            raise ValueError("Force discharging duration is 0 — set number.alphaess_inverter_force_discharging_duration to a non-zero value")
+        if soc is not None and float(soc) <= cutoff_soc:
+            await self._async_turn_off_silent()
+            return
         soc_raw = int(cutoff_soc / DISPATCH_SOC_SCALE)
         power_raw = int(32000 + power_kw * 1000)
-
         await self._coordinator.async_write_dispatch([
-            1,
-            0, power_raw,
-            0, 32000,
-            DISPATCH_MODE_SOC_CONTROL,
-            soc_raw,
-            0, duration_s,
+            1, 0, power_raw, 0, 32000, DISPATCH_MODE_SOC_CONTROL, soc_raw, 0, 60,
         ])
-        self._schedule_auto_off(duration_s)
-        self._start_soc_monitor(cutoff_soc, "below")
+        self._schedule_force_discharging_refresh()
+
+    def _schedule_force_discharging_refresh(self) -> None:
+        self._cancel_refresh_timer()
+        loop = self.hass.loop
+
+        async def _refresh():
+            if not self._is_on:
+                return
+            await self._start_force_discharging()
+
+        def _callback():
+            asyncio.ensure_future(_refresh(), loop=loop)
+
+        self._timer_cancel = loop.call_later(50, _callback)
 
     # ------------------------------------------------------------------
     # Force Export
     # ------------------------------------------------------------------
 
     async def _start_force_export(self) -> None:
+        data = self._coordinator.data or {}
+        soc = data.get("soc_battery")
         power_kw = self._num("force_export_power", 5.0)
-        cutoff_soc = self._num("force_export_cutoff_soc", 100.0)
-        duration_min = self._num("force_export_duration", 120.0)
-        duration_s = int(duration_min * 60)
-        if duration_s <= 0:
-            raise ValueError("Force export duration is 0 — set number.alphaess_inverter_force_export_duration to a non-zero value")
+        cutoff_soc = self._num("force_export_cutoff_soc", 4.0)
+        if soc is not None and float(soc) <= cutoff_soc:
+            await self._async_turn_off_silent()
+            return
         soc_raw = int(cutoff_soc / DISPATCH_SOC_SCALE)
         power_raw = int(32000 + power_kw * 1000)
-
         await self._coordinator.async_write_dispatch([
-            1,
-            0, power_raw,
-            0, 32000,
-            DISPATCH_MODE_SOC_CONTROL,
-            soc_raw,
-            0, duration_s,
+            1, 0, power_raw, 0, 32000, DISPATCH_MODE_SOC_CONTROL, soc_raw, 0, 60,
         ])
-        self._schedule_auto_off(duration_s)
-        self._start_soc_monitor(cutoff_soc, "below")
+        self._schedule_force_export_refresh()
+
+    def _schedule_force_export_refresh(self) -> None:
+        self._cancel_refresh_timer()
+        loop = self.hass.loop
+
+        async def _refresh():
+            if not self._is_on:
+                return
+            await self._start_force_export()
+
+        def _callback():
+            asyncio.ensure_future(_refresh(), loop=loop)
+
+        self._timer_cancel = loop.call_later(50, _callback)
 
     # ------------------------------------------------------------------
     # Generic Dispatch
