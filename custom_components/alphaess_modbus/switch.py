@@ -104,6 +104,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._is_on = False
         self._timer_cancel: asyncio.TimerHandle | None = None
         self._duration_cancel: asyncio.TimerHandle | None = None
+        self._soc_unsub: Any | None = None
 
     async def async_added_to_hass(self) -> None:
         state = await self.async_get_last_state()
@@ -185,6 +186,9 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         if self._duration_cancel:
             self._duration_cancel.cancel()
             self._duration_cancel = None
+        if self._soc_unsub:
+            self._soc_unsub()
+            self._soc_unsub = None
 
     def _cancel_refresh_timer(self) -> None:
         if self._timer_cancel:
@@ -230,6 +234,41 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                 pass
         return DISPATCH_MODE_SOC_CONTROL
 
+    def _start_soc_monitor(self, cutoff_soc: float, direction: str) -> None:
+        """Register a coordinator listener that fires _async_turn_off_silent when SOC crosses cutoff.
+
+        direction='below': stop when soc_battery <= cutoff_soc (discharge/export)
+        direction='above': stop when soc_battery >= cutoff_soc (charging)
+        """
+        if self._soc_unsub:
+            self._soc_unsub()
+            self._soc_unsub = None
+
+        def _handle_update() -> None:
+            if not self._is_on:
+                return
+            data = self._coordinator.data or {}
+            soc = data.get("soc_battery")
+            if soc is None:
+                return
+            soc = float(soc)
+            triggered = (
+                (direction == "below" and soc <= cutoff_soc)
+                or (direction == "above" and soc >= cutoff_soc)
+            )
+            if triggered:
+                _LOGGER.debug(
+                    "SOC %.1f%% reached %s cutoff %.1f%%, stopping %s early",
+                    soc, direction, cutoff_soc, self.switch_key,
+                )
+                unsub = self._soc_unsub
+                self._soc_unsub = None
+                if unsub:
+                    unsub()
+                asyncio.ensure_future(self._async_turn_off_silent(), loop=self.hass.loop)
+
+        self._soc_unsub = self._coordinator.async_add_listener(_handle_update)
+
     # ------------------------------------------------------------------
     # Force Charging
     # ------------------------------------------------------------------
@@ -253,6 +292,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             0, duration_s,
         ])
         self._schedule_auto_off(duration_s)
+        self._start_soc_monitor(cutoff_soc, "above")
 
     # ------------------------------------------------------------------
     # Force Discharging
@@ -277,6 +317,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             0, duration_s,
         ])
         self._schedule_auto_off(duration_s)
+        self._start_soc_monitor(cutoff_soc, "below")
 
     # ------------------------------------------------------------------
     # Force Export
@@ -301,6 +342,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             0, duration_s,
         ])
         self._schedule_auto_off(duration_s)
+        self._start_soc_monitor(cutoff_soc, "below")
 
     # ------------------------------------------------------------------
     # Generic Dispatch
