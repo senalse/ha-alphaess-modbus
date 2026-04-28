@@ -5,6 +5,9 @@ CLAUDE.md
 # Source YAML (reference only, not part of the HACS integration)
 integration_alpha_ess.yaml
 
+# Local reference docs (manufacturer PDFs, datasheets, etc.)
+docs/
+
 # Python
 __pycache__/
 *.pyc

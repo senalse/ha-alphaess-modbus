@@ -205,19 +205,28 @@ The inverter's Modbus TCP port is `502` and the slave ID is `85` by default. The
 
 Example Lovelace dashboard configurations are included in the [`examples/`](examples/) folder:
 
-| File | Description |
-|------|-------------|
-| `alphaess_view.yaml` | Full control dashboard — charging, dispatch, battery, grid, energy stats, system info |
-| `power_diagram.yaml` | Power flow chart for today (requires [ApexCharts Card](https://github.com/RomRider/apexcharts-card)) |
-| `power_diagram_extended.yaml` | Extended power diagrams — today, yesterday, 3-day, instant, and hi-res views |
+| File | Description | Custom cards required |
+|------|-------------|----------------------|
+| `alphaess_dashboard_pfcp.yaml` | Sections-layout dashboard — live power flow, battery controls, scheduling, dispatch, energy stats, system info | [power-flow-card-plus](https://github.com/flixlix/power-flow-card-plus) |
+| `alphaess_view.yaml` | Full control dashboard — charging, dispatch, battery, grid, energy stats, system info | None |
+| `power_diagram.yaml` | Power flow chart for today | [ApexCharts Card](https://github.com/RomRider/apexcharts-card) |
+| `power_diagram_extended.yaml` | Extended power diagrams — today, yesterday, 3-day, instant, and hi-res views | [ApexCharts Card](https://github.com/RomRider/apexcharts-card) |
 
 ### How to use
 
-1. Install the **[ApexCharts Card](https://github.com/RomRider/apexcharts-card)** from HACS (required for power diagrams)
+1. Install any required custom cards via HACS (see table above):
+   - **power-flow-card-plus**: HACS → Frontend → search "Power Flow Card Plus" → Download
+   - **ApexCharts Card**: HACS → Frontend → search "ApexCharts Card" → Download
 2. In Home Assistant go to **Settings → Dashboards → Add Dashboard**
-3. Switch to YAML mode and paste the contents of the example file, or use the **Raw configuration editor** to add the views to an existing dashboard
+3. Switch to YAML mode and paste the contents of the example file
 
-> The dashboard files reference entity IDs created by this integration. All entity IDs follow the pattern `sensor.alphaess_inverter_*`, `switch.alphaess_inverter_*`, etc. (the device name is "AlphaESS Inverter", which Home Assistant uses as the entity ID prefix).
+   Or use the **Raw configuration editor** on an existing dashboard to add the views — paste the content starting from the `views:` key.
+
+4. Reload the dashboard browser tab after installing any custom cards
+
+> **EV Charger entity:** `alphaess_dashboard_pfcp.yaml` includes `sensor.charger_power_active_import` in the power flow diagram. If you do not have an EV charger, remove the `individual:` block from the `custom:power-flow-card-plus` card.
+
+> All entity IDs follow the pattern `sensor.alphaess_inverter_*`, `switch.alphaess_inverter_*`, etc. (the device name is "AlphaESS Inverter", which Home Assistant uses as the entity ID prefix).
 
 ---
 

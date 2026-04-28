@@ -1,0 +1,380 @@
+views:
+  - title: AlphaESS
+    type: sections
+    icon: mdi:solar-panel
+    max_columns: 3
+    sections:
+
+      # ---------------------------------------------------------------------------
+      # ROW 1 - Live status
+      # Requires: power-flow-card-plus (install via HACS)
+      # ---------------------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Live
+
+          - type: custom:power-flow-card-plus
+            entities:
+              battery:
+                state_of_charge: sensor.alphaess_inverter_battery_state_of_charge
+                entity: sensor.alphaess_inverter_battery_power
+                show_state_of_charge: true
+                secondary_info:
+                  entity: sensor.battery_time_remaining
+                display_state: one_way
+                color_icon: color_dynamically
+                use_metadata: false
+                color_value: true
+                state_of_charge_decimals: 1
+              grid:
+                entity: sensor.alphaess_inverter_grid_power
+                display_state: one_way
+                secondary_info: {}
+                use_metadata: false
+                color_value: true
+              solar:
+                entity: sensor.alphaess_inverter_active_power_pv_meter
+                display_zero_state: true
+                secondary_info: {}
+              home:
+                entity: sensor.alphaess_inverter_current_house_load
+                color_value: true
+                color_icon: true
+                override_state: false
+              individual:
+                - entity: sensor.charger_power_active_import
+                  name: EV Charger
+                  icon: mdi:car
+                  inverted_animation: false
+                  show_direction: true
+                  use_metadata: false
+                  display_zero: false
+                  display_zero_state: false
+                  calculate_flow_rate: false
+            clickable_entities: true
+            display_zero_lines:
+              mode: show
+              transparency: 50
+              grey_color:
+                - 189
+                - 189
+                - 189
+            use_new_flow_rate_model: true
+            w_decimals: 0
+            kw_decimals: 1
+            min_flow_rate: 0.75
+            max_flow_rate: 6
+            max_expected_power: 2000
+            min_expected_power: 0.01
+            watt_threshold: 1000
+            transparency_zero_lines: 0
+            allow_layout_break: false
+            disable_dots: false
+            no_labels: false
+            dashboard_link: /energy
+
+          - type: entities
+            title: Battery Detail
+            entities:
+              - entity: sensor.alphaess_inverter_battery_state_of_charge
+                name: State of Charge
+              - entity: sensor.alphaess_inverter_battery_state_of_health
+                name: State of Health
+              - entity: sensor.alphaess_inverter_battery_remaining_time
+                name: Remaining Time (min)
+              - type: section
+              - entity: sensor.alphaess_inverter_battery_voltage
+                name: Voltage
+              - entity: sensor.alphaess_inverter_battery_current
+                name: Current
+              - entity: sensor.alphaess_inverter_battery_max_charge_current
+                name: Max Charge Current
+              - entity: sensor.alphaess_inverter_battery_max_discharge_current
+                name: Max Discharge Current
+              - type: section
+              - entity: sensor.alphaess_inverter_battery_min_cell_temp
+                name: Min Cell Temp
+              - entity: sensor.alphaess_inverter_battery_max_cell_temp
+                name: Max Cell Temp
+              - entity: sensor.alphaess_inverter_battery_min_cell_voltage
+                name: Min Cell Voltage
+              - entity: sensor.alphaess_inverter_battery_max_cell_voltage
+                name: Max Cell Voltage
+              - type: section
+              - entity: sensor.alphaess_inverter_battery_status
+                name: Status
+
+          - type: entities
+            title: Solar Detail
+            entities:
+              - entity: sensor.alphaess_inverter_active_power_pv_meter
+                name: Total (Meter)
+              - type: section
+              - entity: sensor.alphaess_inverter_pv_string_1_power
+                name: String 1
+              - entity: sensor.alphaess_inverter_pv_string_2_power
+                name: String 2
+
+          - type: entities
+            title: Grid Detail
+            entities:
+              - entity: sensor.alphaess_inverter_grid_power
+                name: Grid Power
+              - entity: sensor.alphaess_inverter_grid_power_phase_a
+                name: Phase A
+              - entity: sensor.alphaess_inverter_grid_power_phase_b
+                name: Phase B
+              - entity: sensor.alphaess_inverter_grid_power_phase_c
+                name: Phase C
+              - entity: sensor.alphaess_inverter_grid_voltage_phase_a
+                name: Voltage A
+              - entity: sensor.alphaess_inverter_grid_frequency
+                name: Frequency
+
+      # ---------------------------------------------------------------------------
+      # ROW 2 - Battery controls
+      # ---------------------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Battery Controls
+
+          - type: entities
+            title: Force Charging
+            show_header_toggle: false
+            state_color: true
+            entities:
+              - entity: switch.alphaess_inverter_force_charging
+                name: Enable
+              - entity: switch.alphaess_inverter_force_charging_hold
+                name: Hold After Duration
+              - type: section
+              - entity: number.alphaess_inverter_force_charging_power
+                name: Power (kW)
+              - entity: number.alphaess_inverter_force_charging_duration
+                name: Duration (min)
+              - entity: number.alphaess_inverter_force_charging_cutoff_soc
+                name: Stop at SoC (%)
+
+          - type: entities
+            title: Force Export
+            show_header_toggle: false
+            state_color: true
+            entities:
+              - entity: switch.alphaess_inverter_force_export
+                name: Enable
+              - type: section
+              - entity: number.alphaess_inverter_force_export_power
+                name: Power (kW)
+              - entity: number.alphaess_inverter_force_export_duration
+                name: Duration (min)
+              - entity: number.alphaess_inverter_force_export_cutoff_soc
+                name: Stop at SoC (%)
+
+          - type: entities
+            title: Force Discharging
+            show_header_toggle: false
+            state_color: true
+            entities:
+              - entity: switch.alphaess_inverter_force_discharging
+                name: Enable
+              - type: section
+              - entity: number.alphaess_inverter_force_discharging_power
+                name: Power (kW)
+              - entity: number.alphaess_inverter_force_discharging_duration
+                name: Duration (min)
+              - entity: number.alphaess_inverter_force_discharging_cutoff_soc
+                name: Stop at SoC (%)
+
+          - type: entities
+            title: Excess Export
+            show_header_toggle: false
+            entities:
+              - entity: switch.alphaess_inverter_excess_export
+                name: Enable
+              - entity: switch.alphaess_inverter_excess_export_pause
+                name: Pause
+              - type: section
+              - entity: select.alphaess_inverter_inverter_ac_limit
+                name: Inverter AC Limit
+
+          - type: entities
+            title: Smart Export
+            show_header_toggle: false
+            entities:
+              - entity: switch.alphaess_inverter_smart_export
+                name: Enable
+              - type: section
+              - entity: number.alphaess_inverter_max_export_power
+                name: Max Export (kW)
+              - entity: number.alphaess_inverter_force_export_cutoff_soc
+                name: SoC Floor (%)
+
+          - type: entities
+            title: Force Import
+            show_header_toggle: false
+            state_color: true
+            entities:
+              - entity: switch.alphaess_inverter_force_import
+                name: Enable
+              - entity: switch.alphaess_inverter_force_import_hold
+                name: Hold After Duration
+              - entity: switch.alphaess_inverter_force_import_pause
+                name: Pause
+              - type: section
+              - entity: number.alphaess_inverter_force_import_power
+                name: Import Power (kW)
+              - entity: number.alphaess_inverter_force_import_duration
+                name: Duration (min)
+              - entity: number.alphaess_inverter_force_import_cutoff_soc
+                name: SoC Target (%)
+
+      # ---------------------------------------------------------------------------
+      # ROW 3 - Schedule & settings
+      # ---------------------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Schedule & Settings
+
+          - type: entities
+            title: Charge / Discharge Settings
+            show_header_toggle: false
+            entities:
+              - entity: select.alphaess_inverter_charging_discharging_settings
+                name: Mode
+              - type: section
+                label: Limits
+              - entity: number.alphaess_inverter_charging_cutoff_soc
+                name: Charging Cutoff SoC (%)
+              - entity: number.alphaess_inverter_discharging_cutoff_soc
+                name: Discharging Cutoff SoC (%)
+              - entity: number.alphaess_inverter_max_feed_to_grid
+                name: Max Feed to Grid (%)
+
+          - type: entities
+            title: Charging Periods
+            show_header_toggle: false
+            entities:
+              - type: section
+                label: Period 1
+              - entity: time.alphaess_inverter_charging_period_1_start_time
+                name: Start
+              - entity: time.alphaess_inverter_charging_period_1_stop_time
+                name: Stop
+              - type: section
+                label: Period 2
+              - entity: time.alphaess_inverter_charging_period_2_start_time
+                name: Start
+              - entity: time.alphaess_inverter_charging_period_2_stop_time
+                name: Stop
+
+          - type: entities
+            title: Discharging Periods
+            show_header_toggle: false
+            entities:
+              - type: section
+                label: Period 1
+              - entity: time.alphaess_inverter_discharging_period_1_start_time
+                name: Start
+              - entity: time.alphaess_inverter_discharging_period_1_stop_time
+                name: Stop
+              - type: section
+                label: Period 2
+              - entity: time.alphaess_inverter_discharging_period_2_start_time
+                name: Start
+              - entity: time.alphaess_inverter_discharging_period_2_stop_time
+                name: Stop
+
+          - type: entities
+            title: Dispatch
+            show_header_toggle: false
+            entities:
+              - entity: switch.alphaess_inverter_dispatch
+                name: Enable
+              - entity: select.alphaess_inverter_dispatch_mode
+                name: Mode
+              - entity: number.alphaess_inverter_dispatch_power
+                name: Power (kW)
+              - entity: number.alphaess_inverter_dispatch_duration
+                name: Duration (min)
+              - entity: number.alphaess_inverter_dispatch_cutoff_soc
+                name: Stop at SoC (%)
+              - type: section
+              - entity: button.alphaess_inverter_dispatch_reset
+                name: Reset Dispatch
+              - entity: button.alphaess_inverter_sync_dispatch_state
+                name: Sync Dispatch State
+              - type: section
+                label: Live Registers
+              - entity: sensor.alphaess_inverter_dispatch_start
+                name: Active
+              - entity: sensor.alphaess_inverter_dispatch_active_power
+                name: Active Power
+              - entity: sensor.alphaess_inverter_dispatch_mode
+                name: Active Mode
+              - entity: sensor.alphaess_inverter_dispatch_soc
+                name: SoC Target
+              - entity: sensor.alphaess_inverter_dispatch_time
+                name: Time Remaining
+              - entity: sensor.alphaess_inverter_dispatch_energy_flow_direction
+                name: Energy Flow Direction
+              - entity: sensor.alphaess_inverter_freq_dispatch_flag
+                name: Freq Dispatch Flag
+
+      # ---------------------------------------------------------------------------
+      # ROW 4 - Energy & system
+      # ---------------------------------------------------------------------------
+      - type: grid
+        cards:
+          - type: heading
+            heading: Energy & System
+
+          - type: entities
+            title: Lifetime Energy
+            entities:
+              - entity: sensor.alphaess_inverter_total_energy_from_pv
+                name: From PV
+              - entity: sensor.alphaess_inverter_total_energy_feed_to_grid_meter
+                name: Feed to Grid
+              - entity: sensor.alphaess_inverter_total_energy_consumption_from_grid_meter
+                name: From Grid
+              - entity: sensor.alphaess_inverter_total_energy_charge_battery
+                name: Charged Battery
+              - entity: sensor.alphaess_inverter_total_energy_discharge_battery
+                name: Discharged Battery
+              - entity: sensor.alphaess_inverter_total_energy_charge_battery_from_grid
+                name: Grid -> Battery
+
+          - type: entities
+            title: System
+            entities:
+              - entity: sensor.alphaess_inverter_inverter_temperature
+                name: Inverter Temperature
+              - entity: sensor.alphaess_inverter_inverter_work_mode
+                name: Work Mode
+              - entity: sensor.alphaess_inverter_system_fault
+                name: System Fault
+              - entity: sensor.alphaess_inverter_battery_warning
+                name: Battery Warning
+              - entity: sensor.alphaess_inverter_battery_fault
+                name: Battery Fault
+              - type: section
+                label: Maintenance
+              - entity: switch.alphaess_inverter_soc_calibration
+                name: SOC Calibration
+              - entity: switch.alphaess_inverter_soc_calibration_enable
+                name: SOC Calibration Schedule
+              - entity: select.alphaess_inverter_soc_calibration_cycle_mode
+                name: Calibration Mode
+              - entity: number.alphaess_inverter_soc_calibration_cycle_days
+                name: Calibration Interval (days)
+              - entity: button.alphaess_inverter_synchronise_date_time
+                name: Sync Date & Time
+              - entity: button.alphaess_inverter_restart_pcs
+                name: Restart PCS
+              - entity: button.alphaess_inverter_restart_ems
+                name: Restart EMS
+              - entity: button.alphaess_inverter_reset_energy_totals
+                name: Reset Energy Totals
