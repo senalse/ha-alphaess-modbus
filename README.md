@@ -16,11 +16,11 @@ Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewl
 
 - **90 sensor entities enabled by default** (145 total) — real-time power flows, battery SoC/SoH, temperatures, voltages, energy totals, grid safety parameters, faults & warnings
 - **Force Charging** — charge battery from grid at configurable power (kW), duration, and cutoff SoC
-- **Force Discharging** — discharge battery at configurable power and duration
-- **Force Export** — export to grid at configurable power
+- **Force Discharging** — discharge battery at configurable power, duration, and cutoff SoC; automatically stops 1% above the cutoff and resets dispatch so the inverter returns to self-consumption without any grid draw
+- **Force Export** — export battery to grid at configurable power, duration, and cutoff SoC; same zero-grid-draw auto-stop as Force Discharging
+- **Force Import** — import from grid at a configurable target kW, dynamically adjusting battery charge to offset live PV so total grid draw stays at the target; stops at cutoff SoC
 - **Excess Export** — prioritise grid export over battery charging to reduce PV clipping
 - **Smart Export** — dynamically exports up to a configurable max power, accounting for live house load and PV so grid export stays at the target without overloading the inverter
-- **Smart Charge** — dynamically charges from grid up to a configurable max power, offset by live PV production so you only import what PV can't cover
 - **Charging / Discharging time periods** — configure up to two charge and discharge windows
 - **Dispatch mode selector** — Battery only, SoC Control, Load Following, Maximise Output, and more
 - **Max Feed to Grid** — set grid export limit as % of installed PV capacity
@@ -112,27 +112,30 @@ There is no user-configurable poll interval — intervals are tuned per-sensor t
 | Entity | Type | Description |
 |--------|------|-------------|
 | Force Charging | Switch | Charge battery from grid at configured power/duration/cutoff SoC |
-| Force Discharging | Switch | Discharge battery at configured power/duration/cutoff SoC |
-| Force Export | Switch | Export to grid at configured power/duration/cutoff SoC |
+| Force Discharging | Switch | Discharge battery at configured power/duration/cutoff SoC; auto-stops ~1% above cutoff to guarantee no grid draw during transition |
+| Force Export | Switch | Export to grid at configured power/duration/cutoff SoC; same zero-grid-draw auto-stop as Force Discharging |
+| Force Import | Switch | Import from grid at a target kW, dynamically adjusted for live PV so total grid draw stays at the target; stops at cutoff SoC |
+| Force Import Pause | Switch | Temporarily pause Force Import without losing its active state |
 | Dispatch | Switch | Generic dispatch — mode, power, SoC target, and duration all configurable independently |
 | Excess Export | Switch | Maximise PV export, reduce clipping (re-fires every 4 min) |
 | Excess Export Pause | Switch | Temporarily pause Excess Export without losing its active state |
 | Smart Export | Switch | Dynamically exports up to Max Export Power, adjusted for live house load and PV (re-fires every 30 s) |
-| Smart Charge | Switch | Dynamically charges up to Max Import Power from grid, offset by live PV production (re-fires every 30 s) |
 | Force Charging Power | Number | Charging power in kW (0–20) |
 | Force Charging Duration | Number | Duration in minutes (0–480, step 5) |
 | Force Charging Cutoff SoC | Number | Stop charging at this SoC % |
 | Force Discharging Power | Number | Discharging power in kW (0–20) |
 | Force Discharging Duration | Number | Duration in minutes (0–480, step 5) |
-| Force Discharging Cutoff SoC | Number | Stop discharging at this SoC % |
+| Force Discharging Cutoff SoC | Number | Stop discharging at this SoC % (switch auto-stops ~1% above this) |
 | Force Export Power | Number | Export power in kW (0–20) |
 | Force Export Duration | Number | Duration in minutes (0–480, step 5) |
-| Force Export Cutoff SoC | Number | Stop exporting at this SoC % |
+| Force Export Cutoff SoC | Number | Stop exporting at this SoC % (switch auto-stops ~1% above this) |
+| Force Import Power | Number | Target grid import in kW (0–20) |
+| Force Import Duration | Number | Duration in minutes (0–480, step 5) |
+| Force Import Cutoff SoC | Number | Stop importing at this SoC % |
 | Dispatch Power | Number | Dispatch power in kW (−20 to +20; negative = charge, positive = discharge/export) |
 | Dispatch Duration | Number | Duration in minutes (0–480, step 5) |
 | Dispatch Cutoff SoC | Number | SoC target % for the generic Dispatch switch |
 | Max Export Power | Number | Target grid export for Smart Export (kW) |
-| Max Import Power | Number | Target grid import for Smart Charge (kW) |
 | Dispatch Mode | Select | Operating mode for the generic Dispatch switch (Battery Only, SoC Control, Load Following, etc.) |
 | Charging / Discharging Settings | Select | Enable/disable time period control (Disable / Grid Charging / Discharge Time Control / Both) |
 | Inverter AC Limit | Select | Inverter AC output capacity (3–20 kW) — used by Excess Export and Smart Export to avoid overloading the inverter |
