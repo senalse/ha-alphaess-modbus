@@ -369,6 +369,8 @@ SENSOR_REGISTERS: list[ModbusSensorDef] = [
     ModbusSensorDef("soh_battery", "Battery State of Health",
                     0x011B, "int16", unit="%", device_class="battery",
                     scale=0.1, scan_interval=10),
+    ModbusSensorDef("soc_calibration", "SOC Calibration",
+                    0x1901, "int16", scan_interval=60),
     ModbusSensorDef("battery_status", "Battery Status",
                     0x0103, "int16", scan_interval=60),
     ModbusSensorDef("battery_voltage", "Battery Voltage",
@@ -613,3 +615,9 @@ DISPATCH_SOC_SCALE = 0.392  # %/bit
 
 # Charging/discharging time period control register
 CHARGING_TIME_PERIOD_ADDR = 0x084F
+
+# SOC calibration register
+SOC_CALIBRATION_ADDR = 0x1901
+
+# Reset/restart register
+RESET_MODE_ADDR = 0x1100

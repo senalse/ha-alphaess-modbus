@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, RESET_MODE_ADDR
 from .coordinator import AlphaESSCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,6 +29,16 @@ BUTTON_DEFS = [
         "key": "sync_dispatch_state",
         "name": "Sync Dispatch State",
         "icon": "mdi:sync",
+    },
+    {
+        "key": "restart_pcs",
+        "name": "Restart PCS",
+        "icon": "mdi:restart",
+    },
+    {
+        "key": "restart_ems",
+        "name": "Restart EMS",
+        "icon": "mdi:restart",
     },
 ]
 
@@ -67,6 +77,10 @@ class AlphaESSButton(ButtonEntity):
             await self._coordinator.async_sync_datetime()
         elif self._key == "sync_dispatch_state":
             await self._sync_dispatch_state()
+        elif self._key == "restart_pcs":
+            await self._coordinator.async_write_register(RESET_MODE_ADDR, 7)
+        elif self._key == "restart_ems":
+            await self._coordinator.async_write_register(RESET_MODE_ADDR, 8)
 
     async def _sync_dispatch_state(self) -> None:
         from .switch import _MUTEX_SWITCHES

@@ -51,6 +51,10 @@
       "smart_charge": {
         "name": "Smart Charge",
         "description": "Charges the battery up to Max Import Power from the grid, offset by live PV production. Recalculates every 30 seconds. Turns off any other active dispatch switch."
+      },
+      "soc_calibration": {
+        "name": "SOC Calibration",
+        "description": "Triggers a full charge/discharge calibration cycle so the BMS can recalibrate its SoC reading. This is a slow multi-hour process. The inverter clears this flag automatically when the cycle completes."
       }
     },
     "number": {
@@ -213,6 +217,14 @@
       "sync_dispatch_state": {
         "name": "Sync Dispatch State",
         "description": "Reconciles HA switch states with the inverter. If dispatch is running but no switch shows on (e.g. after an integration reload), marks the Dispatch switch as on. If no dispatch is running but a switch shows on, clears it."
+      },
+      "restart_pcs": {
+        "name": "Restart PCS",
+        "description": "Restarts the Power Conversion System (inverter) software. Use for remote troubleshooting when the inverter is behaving unexpectedly."
+      },
+      "restart_ems": {
+        "name": "Restart EMS",
+        "description": "Restarts the Energy Management System software. Use for remote troubleshooting when scheduling or dispatch behaviour is incorrect."
       }
     }
   }

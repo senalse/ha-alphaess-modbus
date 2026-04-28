@@ -11,7 +11,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DOMAIN, DISPATCH_MODE_SOC_CONTROL, DISPATCH_SOC_SCALE
+from .const import DOMAIN, DISPATCH_MODE_SOC_CONTROL, DISPATCH_SOC_SCALE, SOC_CALIBRATION_ADDR
 from .coordinator import AlphaESSCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -67,7 +67,9 @@ async def async_setup_entry(
 
     # Store references so switches can interact with each other
     hass.data[DOMAIN][f"{entry.entry_id}_switches"] = {e.switch_key: e for e in entities}
-    async_add_entities(entities)
+
+    calibration_switch = AlphaESSCalibrationSwitch(coordinator, entry)
+    async_add_entities(entities + [calibration_switch])
 
 
 def _get_number(hass: HomeAssistant, entry_id: str, key: str, default: float) -> float:
@@ -422,3 +424,48 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             asyncio.ensure_future(_refresh(), loop=loop)
 
         self._timer_cancel = loop.call_later(30, _callback)
+
+
+class AlphaESSCalibrationSwitch(SwitchEntity):
+    """Switch that reflects and controls the inverter's SOC calibration cycle (0x1901).
+
+    State is read back from the inverter every 60 s via the soc_calibration sensor
+    so HA accurately shows when the cycle finishes and the inverter self-clears the flag.
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(self, coordinator: AlphaESSCoordinator, entry: ConfigEntry) -> None:
+        self._coordinator = coordinator
+        self._attr_unique_id = f"{entry.entry_id}_soc_calibration"
+        self._attr_name = "SOC Calibration"
+        self._attr_translation_key = "soc_calibration"
+        self._attr_icon = "mdi:battery-sync"
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
+        self._unsub: Any = None
+
+    async def async_added_to_hass(self) -> None:
+        self._unsub = self._coordinator.async_add_listener(self._handle_coordinator_update)
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._unsub:
+            self._unsub()
+
+    def _handle_coordinator_update(self) -> None:
+        self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        return self._coordinator.data is not None
+
+    @property
+    def is_on(self) -> bool:
+        if not self._coordinator.data:
+            return False
+        return int(self._coordinator.data.get("soc_calibration", 0)) == 1
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._coordinator.async_write_register(SOC_CALIBRATION_ADDR, 1)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._coordinator.async_write_register(SOC_CALIBRATION_ADDR, 0)
