@@ -207,10 +207,10 @@ Example Lovelace dashboard configurations are included in the [`examples/`](exam
 
 | File | Description | Custom cards required |
 |------|-------------|----------------------|
-| `alphaess_dashboard_pfcp.yaml` | Sections-layout dashboard — live power flow, battery controls, scheduling, dispatch, energy stats, system info | [power-flow-card-plus](https://github.com/flixlix/power-flow-card-plus) |
-| `alphaess_view.yaml` | Full control dashboard — charging, dispatch, battery, grid, energy stats, system info | None |
+| `alphaess_dashboard_pfcp.yaml` | Sections-layout dashboard with live power flow diagram — battery controls, scheduling, dispatch, energy stats, system info | [power-flow-card-plus](https://github.com/flixlix/power-flow-card-plus) |
+| `alphaess_dashboard.yaml` | Sections-layout dashboard without custom cards — gauge + glance live view, battery controls, scheduling, dispatch, energy stats, system info | None |
 | `power_diagram.yaml` | Power flow chart for today | [ApexCharts Card](https://github.com/RomRider/apexcharts-card) |
-| `power_diagram_extended.yaml` | Extended power diagrams — today, yesterday, 3-day, instant, and hi-res views | [ApexCharts Card](https://github.com/RomRider/apexcharts-card) |
+| `power_diagram_extended.yaml` | Extended power diagrams — today, yesterday, 3-day, string detail, instant, and hi-res views | [ApexCharts Card](https://github.com/RomRider/apexcharts-card) |
 
 ### How to use
 

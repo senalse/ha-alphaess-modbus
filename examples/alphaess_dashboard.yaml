@@ -6,7 +6,7 @@ views:
     sections:
 
       # ---------------------------------------------------------------------------
-      # ROW 1 — Live status
+      # ROW 1 - Live status
       # ---------------------------------------------------------------------------
       - type: grid
         title: Live
@@ -62,6 +62,10 @@ views:
                 name: Min Cell Temp
               - entity: sensor.alphaess_inverter_battery_max_cell_temp
                 name: Max Cell Temp
+              - entity: sensor.alphaess_inverter_battery_min_cell_voltage
+                name: Min Cell Voltage
+              - entity: sensor.alphaess_inverter_battery_max_cell_voltage
+                name: Max Cell Voltage
 
           - type: entities
             title: Solar Detail
@@ -94,7 +98,7 @@ views:
                 name: Frequency
 
       # ---------------------------------------------------------------------------
-      # ROW 2 — Battery controls
+      # ROW 2 - Battery controls
       # ---------------------------------------------------------------------------
       - type: grid
         title: Battery Controls
@@ -103,9 +107,12 @@ views:
           - type: entities
             title: Force Charging
             show_header_toggle: false
+            state_color: true
             entities:
               - entity: switch.alphaess_inverter_force_charging
                 name: Enable
+              - entity: switch.alphaess_inverter_force_charging_hold
+                name: Hold After Duration
               - type: section
               - entity: number.alphaess_inverter_force_charging_power
                 name: Power (kW)
@@ -117,6 +124,7 @@ views:
           - type: entities
             title: Force Discharging
             show_header_toggle: false
+            state_color: true
             entities:
               - entity: switch.alphaess_inverter_force_discharging
                 name: Enable
@@ -143,6 +151,7 @@ views:
           - type: entities
             title: Force Export
             show_header_toggle: false
+            state_color: true
             entities:
               - entity: switch.alphaess_inverter_force_export
                 name: Enable
@@ -167,19 +176,26 @@ views:
                 name: SoC Floor (%)
 
           - type: entities
-            title: Smart Charge
+            title: Force Import
             show_header_toggle: false
+            state_color: true
             entities:
-              - entity: switch.alphaess_inverter_smart_charge
+              - entity: switch.alphaess_inverter_force_import
                 name: Enable
+              - entity: switch.alphaess_inverter_force_import_hold
+                name: Hold After Duration
+              - entity: switch.alphaess_inverter_force_import_pause
+                name: Pause
               - type: section
-              - entity: number.alphaess_inverter_max_import_power
-                name: Max Import (kW)
-              - entity: number.alphaess_inverter_force_charging_cutoff_soc
+              - entity: number.alphaess_inverter_force_import_power
+                name: Import Power (kW)
+              - entity: number.alphaess_inverter_force_import_duration
+                name: Duration (min)
+              - entity: number.alphaess_inverter_force_import_cutoff_soc
                 name: SoC Target (%)
 
       # ---------------------------------------------------------------------------
-      # ROW 3 — Schedule & settings
+      # ROW 3 - Schedule & settings
       # ---------------------------------------------------------------------------
       - type: grid
         title: Schedule & Settings
@@ -206,24 +222,16 @@ views:
             entities:
               - type: section
                 label: Period 1
-              - entity: number.alphaess_inverter_charging_period_1_start_hour
-                name: Start Hour
-              - entity: number.alphaess_inverter_charging_period_1_start_minute
-                name: Start Minute
-              - entity: number.alphaess_inverter_charging_period_1_stop_hour
-                name: Stop Hour
-              - entity: number.alphaess_inverter_charging_period_1_stop_minute
-                name: Stop Minute
+              - entity: time.alphaess_inverter_charging_period_1_start_time
+                name: Start
+              - entity: time.alphaess_inverter_charging_period_1_stop_time
+                name: Stop
               - type: section
                 label: Period 2
-              - entity: number.alphaess_inverter_charging_period_2_start_hour
-                name: Start Hour
-              - entity: number.alphaess_inverter_charging_period_2_start_minute
-                name: Start Minute
-              - entity: number.alphaess_inverter_charging_period_2_stop_hour
-                name: Stop Hour
-              - entity: number.alphaess_inverter_charging_period_2_stop_minute
-                name: Stop Minute
+              - entity: time.alphaess_inverter_charging_period_2_start_time
+                name: Start
+              - entity: time.alphaess_inverter_charging_period_2_stop_time
+                name: Stop
 
           - type: entities
             title: Discharging Periods
@@ -231,24 +239,16 @@ views:
             entities:
               - type: section
                 label: Period 1
-              - entity: number.alphaess_inverter_discharging_period_1_start_hour
-                name: Start Hour
-              - entity: number.alphaess_inverter_discharging_period_1_start_minute
-                name: Start Minute
-              - entity: number.alphaess_inverter_discharging_period_1_stop_hour
-                name: Stop Hour
-              - entity: number.alphaess_inverter_discharging_period_1_stop_minute
-                name: Stop Minute
+              - entity: time.alphaess_inverter_discharging_period_1_start_time
+                name: Start
+              - entity: time.alphaess_inverter_discharging_period_1_stop_time
+                name: Stop
               - type: section
                 label: Period 2
-              - entity: number.alphaess_inverter_discharging_period_2_start_hour
-                name: Start Hour
-              - entity: number.alphaess_inverter_discharging_period_2_start_minute
-                name: Start Minute
-              - entity: number.alphaess_inverter_discharging_period_2_stop_hour
-                name: Stop Hour
-              - entity: number.alphaess_inverter_discharging_period_2_stop_minute
-                name: Stop Minute
+              - entity: time.alphaess_inverter_discharging_period_2_start_time
+                name: Start
+              - entity: time.alphaess_inverter_discharging_period_2_stop_time
+                name: Stop
 
           - type: entities
             title: Dispatch
@@ -281,9 +281,13 @@ views:
                 name: SoC Target
               - entity: sensor.alphaess_inverter_dispatch_time
                 name: Time Remaining
+              - entity: sensor.alphaess_inverter_dispatch_energy_flow_direction
+                name: Energy Flow Direction
+              - entity: sensor.alphaess_inverter_freq_dispatch_flag
+                name: Freq Dispatch Flag
 
       # ---------------------------------------------------------------------------
-      # ROW 4 — Energy totals & system
+      # ROW 4 - Energy totals & system
       # ---------------------------------------------------------------------------
       - type: grid
         title: Energy & System
@@ -303,7 +307,7 @@ views:
               - entity: sensor.alphaess_inverter_total_energy_discharge_battery
                 name: Discharged Battery
               - entity: sensor.alphaess_inverter_total_energy_charge_battery_from_grid
-                name: Grid → Battery
+                name: Grid -> Battery
 
           - type: entities
             title: System
@@ -319,5 +323,20 @@ views:
               - entity: sensor.alphaess_inverter_battery_fault
                 name: Battery Fault
               - type: section
+                label: Maintenance
+              - entity: switch.alphaess_inverter_soc_calibration
+                name: SOC Calibration
+              - entity: switch.alphaess_inverter_soc_calibration_enable
+                name: SOC Calibration Schedule
+              - entity: select.alphaess_inverter_soc_calibration_cycle_mode
+                name: Calibration Mode
+              - entity: number.alphaess_inverter_soc_calibration_cycle_days
+                name: Calibration Interval (days)
               - entity: button.alphaess_inverter_synchronise_date_time
                 name: Sync Date & Time
+              - entity: button.alphaess_inverter_restart_pcs
+                name: Restart PCS
+              - entity: button.alphaess_inverter_restart_ems
+                name: Restart EMS
+              - entity: button.alphaess_inverter_reset_energy_totals
+                name: Reset Energy Totals

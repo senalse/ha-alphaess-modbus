@@ -37,7 +37,7 @@ views:
           show_states: true
           colorize_states: true
         series:
-          - entity: sensor.alphaess_soc_battery
+          - entity: sensor.alphaess_inverter_battery_state_of_charge
             name: Battery
             yaxis_id: battery
             type: area
@@ -51,13 +51,14 @@ views:
               duration: 5min
             show:
               legend_value: false
-          - entity: sensor.alphaess_current_house_load_apexcharts
+          - entity: sensor.alphaess_inverter_current_house_load
             float_precision: 2
             name: Load
             yaxis_id: power
             type: area
             color: '#6FB6C6'
             unit: kW
+            transform: "return x / 1000;"
             extend_to: now
             curve: smooth
             fill_raw: last
@@ -67,13 +68,14 @@ views:
               duration: 5min
             show:
               legend_value: false
-          - entity: sensor.alphaess_current_pv_production_apexcharts
+          - entity: sensor.alphaess_inverter_current_pv_production
             float_precision: 2
             name: PV
             yaxis_id: power
             type: area
             color: '#FABF00'
             unit: kW
+            transform: "return x / 1000;"
             extend_to: now
             curve: smooth
             fill_raw: last
@@ -83,13 +85,14 @@ views:
               duration: 5min
             show:
               legend_value: false
-          - entity: sensor.alphaess_power_grid_consumption_apexcharts
+          - entity: sensor.alphaess_inverter_grid_power
             float_precision: 2
             name: Grid Consumption
             yaxis_id: power
             type: area
             color: '#C18349'
             unit: kW
+            transform: "return x > 0 ? x / 1000 : 0;"
             extend_to: now
             curve: smooth
             fill_raw: last
@@ -99,7 +102,7 @@ views:
               duration: 5min
             show:
               legend_value: false
-          - entity: sensor.alphaess_power_grid_feed_in_apexcharts
+          - entity: sensor.alphaess_inverter_grid_power
             float_precision: 2
             name: Feed-In
             max: 6
@@ -107,6 +110,7 @@ views:
             type: area
             color: '#DF681F'
             unit: kW
+            transform: "return x < 0 ? Math.abs(x) / 1000 : 0;"
             extend_to: now
             curve: smooth
             fill_raw: last
