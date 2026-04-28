@@ -24,6 +24,10 @@
         "name": "Force Charging",
         "description": "Forces the battery to charge from the grid at the configured power. Stops after the set duration or when SoC reaches the cutoff. Turns off any other active dispatch switch."
       },
+      "force_charging_hold": {
+        "name": "Force Charging Hold",
+        "description": "When enabled, Force Charging will not return to self-consumption mode when the duration expires or the SoC cutoff is reached. Instead a neutral hold dispatch keeps the inverter in dispatch mode to prevent the battery discharging. Turn Force Charging off to return to normal operation."
+      },
       "force_discharging": {
         "name": "Force Discharging",
         "description": "Forces the battery to discharge at the configured power. Stops after the set duration or when SoC falls to the cutoff. Turns off any other active dispatch switch."
@@ -47,6 +51,10 @@
       "force_import": {
         "name": "Force Import",
         "description": "Imports from the grid at the configured power, dynamically adjusted for live house load and PV so total grid draw stays at the target. Recalculates every 25 seconds. Stops after the set duration or when SoC reaches the cutoff. Turns off any other active dispatch switch."
+      },
+      "force_import_hold": {
+        "name": "Force Import Hold",
+        "description": "When enabled, Force Import will not return to self-consumption mode when the duration expires or the SoC cutoff is reached. The dispatch continues refreshing to hold the battery at the target SoC and prevent discharge. Turn Force Import off to return to normal operation."
       },
       "force_import_pause": {
         "name": "Force Import Pause",

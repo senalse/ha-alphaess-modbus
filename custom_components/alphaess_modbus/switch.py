@@ -49,15 +49,19 @@ _MUTEX_SWITCHES = [
 
 SWITCH_DEFS = [
     {"key": "force_charging",      "name": "Force Charging",       "icon": "mdi:battery-charging"},
+    {"key": "force_charging_hold", "name": "Force Charging Hold",  "icon": "mdi:battery-lock"},
     {"key": "force_discharging",   "name": "Force Discharging",    "icon": "mdi:battery-arrow-down"},
     {"key": "force_export",        "name": "Force Export",         "icon": "mdi:transmission-tower-export"},
     {"key": "force_import",        "name": "Force Import",         "icon": "mdi:transmission-tower-import"},
+    {"key": "force_import_hold",   "name": "Force Import Hold",    "icon": "mdi:transmission-tower-lock"},
     {"key": "force_import_pause",  "name": "Force Import Pause",   "icon": "mdi:pause-circle"},
     {"key": "dispatch",            "name": "Dispatch",             "icon": "mdi:button-pointer"},
     {"key": "excess_export",       "name": "Excess Export",        "icon": "mdi:solar-power"},
     {"key": "excess_export_pause", "name": "Excess Export Pause",  "icon": "mdi:pause-circle"},
     {"key": "smart_export",        "name": "Smart Export",         "icon": "mdi:transmission-tower-export"},
 ]
+
+_HOLD_SWITCHES = {"force_charging_hold", "force_import_hold"}
 
 
 async def async_setup_entry(
@@ -119,6 +123,10 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         if self.switch_key in ("excess_export_pause", "force_import_pause"):
             await self._handle_pause_turn_on()
             return
+        if self.switch_key in _HOLD_SWITCHES:
+            self._is_on = True
+            self.async_write_ha_state()
+            return
 
         # Mutual exclusion: turn off all other mutex switches first
         switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
@@ -170,12 +178,18 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         if self.switch_key in ("excess_export_pause", "force_import_pause"):
             await self._handle_pause_turn_off()
             return
+        if self.switch_key in _HOLD_SWITCHES:
+            self._is_on = False
+            self.async_write_ha_state()
+            return
         await self._async_turn_off_silent()
 
     async def _async_turn_off_silent(self) -> None:
         self._is_on = False
         self._cancel_timer()
         self.async_write_ha_state()
+        if self.switch_key in _HOLD_SWITCHES:
+            return
         await self._coordinator.async_reset_dispatch()
         # When a switch with a paired pause stops, also clear the pause switch
         pause_key = None
@@ -213,6 +227,19 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         loop = self.hass.loop
 
         async def _turn_off():
+            hold_key = None
+            if self.switch_key == "force_charging":
+                hold_key = "force_charging_hold"
+            elif self.switch_key == "force_import":
+                hold_key = "force_import_hold"
+            if hold_key:
+                switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+                hold_sw = switches.get(hold_key)
+                if hold_sw and hold_sw.is_on:
+                    if self.switch_key == "force_charging":
+                        await self._start_force_charging_hold()
+                    # force_import: refresh loop is already running — just don't stop
+                    return
             await self._async_turn_off_silent()
 
         def _callback():
@@ -307,6 +334,34 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             0, duration_s,
         ])
         self._schedule_auto_off(duration_s)
+
+    async def _start_force_charging_hold(self) -> None:
+        """Neutral hold dispatch — keeps inverter in dispatch mode to prevent discharge."""
+        cutoff_soc = self._num("force_charging_cutoff_soc", 100.0)
+        soc_raw = int(cutoff_soc / DISPATCH_SOC_SCALE)
+        await self._coordinator.async_write_dispatch([
+            1, 0, 32000, 0, 32000, DISPATCH_MODE_SOC_CONTROL, soc_raw, 0, 60,
+        ])
+        self._schedule_force_charging_hold_refresh()
+
+    def _schedule_force_charging_hold_refresh(self) -> None:
+        self._cancel_refresh_timer()
+        loop = self.hass.loop
+
+        async def _refresh():
+            if not self._is_on:
+                return
+            switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+            hold_sw = switches.get("force_charging_hold")
+            if hold_sw and hold_sw.is_on:
+                await self._start_force_charging_hold()
+            else:
+                await self._async_turn_off_silent()
+
+        def _callback():
+            asyncio.ensure_future(_refresh(), loop=loop)
+
+        self._timer_cancel = loop.call_later(50, _callback)
 
     # ------------------------------------------------------------------
     # Force Discharging
