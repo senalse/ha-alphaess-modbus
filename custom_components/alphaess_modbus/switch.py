@@ -267,9 +267,12 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                 return
             soc = float(soc)
             cutoff = self._num(param_key, default)
+            # Stop 1% before the inverter's own internal limit so the dispatch
+            # is still active (battery still meets house load) while the reset
+            # is sent - this guarantees no grid draw during the transition.
             triggered = (
-                (direction == "below" and soc <= cutoff)
-                or (direction == "above" and soc >= cutoff)
+                (direction == "below" and soc <= cutoff + 1.0)
+                or (direction == "above" and soc >= cutoff - 1.0)
             )
             if not triggered:
                 return
