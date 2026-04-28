@@ -235,6 +235,9 @@ SENSOR_REGISTERS: list[ModbusSensorDef] = [
     ModbusSensorDef("pv4_current", "PV String 4 Current",
                     0x042A, "int16", unit="A", device_class="current",
                     scale=0.1, precision=2, scan_interval=60),
+    ModbusSensorDef("pv_total_power", "PV Total Power (Inverter)",
+                    0x0453, "uint32", unit="W", device_class="power",
+                    scan_interval=1, enabled_by_default=False),
 
     # --- Energy totals ---
     ModbusSensorDef("total_energy_feed_to_grid_meter", "Total Energy Feed to Grid (Meter)",
@@ -393,6 +396,29 @@ SENSOR_REGISTERS: list[ModbusSensorDef] = [
                     scale=0.1, precision=1, scan_interval=10),
     ModbusSensorDef("battery_remaining_time", "Battery Remaining Time",
                     0x0127, "int16", unit="min", scan_interval=60),
+    ModbusSensorDef("battery_relay_status", "Battery Relay Status",
+                    0x0104, "uint16", scan_interval=60, enabled_by_default=False),
+    ModbusSensorDef("battery_min_cell_voltage", "Battery Min Cell Voltage",
+                    0x0107, "uint16", unit="V", device_class="voltage",
+                    scale=0.001, precision=3, scan_interval=60, enabled_by_default=True),
+    ModbusSensorDef("battery_max_cell_voltage", "Battery Max Cell Voltage",
+                    0x010A, "uint16", unit="V", device_class="voltage",
+                    scale=0.001, precision=3, scan_interval=60, enabled_by_default=True),
+    ModbusSensorDef("battery_charge_cutoff_voltage", "Battery Charge Cutoff Voltage",
+                    0x0113, "uint16", unit="V", device_class="voltage",
+                    scale=0.1, precision=1, scan_interval=300, enabled_by_default=False),
+    ModbusSensorDef("battery_discharge_cutoff_voltage", "Battery Discharge Cutoff Voltage",
+                    0x0114, "uint16", unit="V", device_class="voltage",
+                    scale=0.1, precision=1, scan_interval=300, enabled_by_default=False),
+    ModbusSensorDef("battery_module_count", "Battery Module Count",
+                    0x0118, "uint16", scan_interval=300, enabled_by_default=False),
+    ModbusSensorDef("battery_capacity_kwh", "Battery Capacity",
+                    0x0119, "uint16", unit="kWh", device_class="energy_storage",
+                    scale=0.001, precision=2, scan_interval=300, enabled_by_default=False),
+    ModbusSensorDef("battery_type", "Battery Type",
+                    0x011A, "uint16", scan_interval=300, enabled_by_default=False),
+    ModbusSensorDef("soc_calibration_enable", "SOC Calibration Enable (raw)",
+                    0x1900, "uint16", scan_interval=60, enabled_by_default=False),
 
     # --- PV settings (read-only view) ---
     ModbusSensorDef("max_feed_to_grid", "Max Feed to Grid",
@@ -465,6 +491,18 @@ SENSOR_REGISTERS: list[ModbusSensorDef] = [
                     0x0886, "int16", unit="%", scale=0.392, scan_interval=5),
     ModbusSensorDef("dispatch_time", "Dispatch Time",
                     0x0887, "uint32", unit="s", scan_interval=5),
+    ModbusSensorDef("dispatch_energy_flow_direction", "Dispatch Energy Flow Direction",
+                    0x0889, "uint16", scan_interval=5, state_class=None,
+                    enabled_by_default=True),
+    ModbusSensorDef("dispatch_pv_switch", "Dispatch PV Switch",
+                    0x088A, "uint16", scan_interval=5, enabled_by_default=False),
+    ModbusSensorDef("freq_dispatch_flag", "Freq Dispatch Flag",
+                    0x088F, "uint16", scan_interval=5, enabled_by_default=True),
+    ModbusSensorDef("freq_dispatch_power", "Freq Dispatch Power",
+                    0x0890, "int16", unit="W", scan_interval=5, enabled_by_default=False),
+    ModbusSensorDef("freq_dispatch_frequency", "Freq Dispatch Frequency",
+                    0x0891, "uint16", unit="Hz", scale=0.01, precision=2,
+                    scan_interval=5, enabled_by_default=False),
 ]
 
 # ---------------------------------------------------------------------------
@@ -548,6 +586,10 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
                     min_value=0, max_value=20, step=0.1, unit="kW",
                     icon="mdi:transmission-tower-export"),
 
+    ModbusNumberDef("soc_calibration_cycle_days", "SOC Calibration Cycle Days",
+                    address=0x1903, min_value=1, max_value=30, step=1, unit="days",
+                    icon="mdi:calendar-sync"),
+
     # Charging/discharging period times are handled by the time platform (time.py)
     # using ModbusTimeDef entries in TIME_REGISTERS below.
 ]
@@ -595,6 +637,14 @@ SELECT_REGISTERS: list[ModbusSelectDef] = [
         values=[3000, 4000, 4600, 5000, 6000, 8000, 10000, 12000, 15000, 20000],
         icon="mdi:transmission-tower",
     ),
+    ModbusSelectDef(
+        "soc_calibration_cycle_mode",
+        "SOC Calibration Cycle Mode",
+        address=0x1902,
+        options=["One-shot", "Recurring"],
+        values=[0, 1],
+        icon="mdi:calendar-sync",
+    ),
 ]
 
 # ---------------------------------------------------------------------------
@@ -625,8 +675,9 @@ DISPATCH_SOC_SCALE = 0.392  # %/bit
 # Charging/discharging time period control register
 CHARGING_TIME_PERIOD_ADDR = 0x084F
 
-# SOC calibration register
+# SOC calibration registers
 SOC_CALIBRATION_ADDR = 0x1901
+SOC_CALIBRATION_ENABLE_ADDR = 0x1900
 
 # Reset/restart register
 RESET_MODE_ADDR = 0x1100

@@ -14,13 +14,16 @@ Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewl
 
 ## Features
 
-- **90 sensor entities enabled by default** (145 total) — real-time power flows, battery SoC/SoH, temperatures, voltages, energy totals, grid safety parameters, faults & warnings
+- **94 sensor entities enabled by default** (160 total) — real-time power flows, battery SoC/SoH, cell voltages, temperatures, voltages, energy totals, dispatch diagnostics, grid safety parameters, faults & warnings
 - **Force Charging** — charge battery from grid at configurable power (kW), duration, and cutoff SoC
 - **Force Discharging** — discharge battery at configurable power, duration, and cutoff SoC; automatically stops 1% above the cutoff and resets dispatch so the inverter returns to self-consumption without any grid draw
 - **Force Export** — export battery to grid at configurable power, duration, and cutoff SoC; same zero-grid-draw auto-stop as Force Discharging
 - **Force Import** — import from grid at a configurable target kW, dynamically adjusting battery charge to offset live PV so total grid draw stays at the target; stops at cutoff SoC
 - **Excess Export** — prioritise grid export over battery charging to reduce PV clipping
 - **Smart Export** — dynamically exports up to a configurable max power, accounting for live house load and PV so grid export stays at the target without overloading the inverter
+- **Battery cell health** — min/max cell voltages polled every 60 s; charge/discharge cutoff voltages, module count, capacity, and type available as diagnostic sensors
+- **Dispatch diagnostics** — energy flow direction (human-readable), PV switch state, frequency dispatch flag, power, and frequency
+- **SOC Calibration scheduling** — enable/disable the inverter's automatic calibration feature, set cycle mode (One-shot / Recurring), and configure the cycle interval in days
 - **Charging / Discharging time periods** — configure up to two charge and discharge windows
 - **Dispatch mode selector** — Battery only, SoC Control, Load Following, Maximise Output, and more
 - **Max Feed to Grid** — set grid export limit as % of installed PV capacity
@@ -78,11 +81,12 @@ Each sensor has a fixed poll interval hardcoded in the integration. The coordina
 
 | Interval | Sensors |
 |----------|---------|
-| **1 s** | Grid Power, Battery Power, Active Power PV Meter, PV String 1–4 Power |
-| **5 s** | Grid Power Phase A/B/C, Grid Voltage Phase A/B/C, Inverter Work Mode, Inverter Power L1/L2/L3 + total, System Fault, Inverter Warning 1/2, Inverter Fault 1/2, Battery Warning/Fault, Max Feed to Grid, Dispatch registers |
+| **1 s** | Grid Power, Battery Power, Active Power PV Meter, PV String 1–4 Power, PV Total Power *(disabled by default)* |
+| **5 s** | Grid Power Phase A/B/C, Grid Voltage Phase A/B/C, Inverter Work Mode, Inverter Power L1/L2/L3 + total, System Fault, Inverter Warning 1/2, Inverter Fault 1/2, Battery Warning/Fault, Max Feed to Grid, Dispatch registers (including Dispatch Energy Flow Direction, Freq Dispatch Flag), dispatch PV switch, freq dispatch power/frequency *(last two disabled by default)* |
 | **10 s** | Battery SoC, Battery SoH, Battery min/max cell temps, Battery max charge/discharge current, Charging Time Period Control, Charging Cutoff SoC |
 | **30 s** | Grid Frequency, Charging/Discharging period start/stop times, Discharging Cutoff SoC |
-| **60 s** | Inverter Temperature, Battery Voltage/Current/Status/Remaining Time, PV String Voltage & Current, Energy Totals, Version strings, Network settings *(disabled by default)* |
+| **60 s** | Inverter Temperature, Battery Voltage/Current/Status/Remaining Time, Battery min/max cell voltages, Battery relay status *(disabled)*, PV String Voltage & Current, Energy Totals, Version strings, SOC Calibration Enable *(disabled)*, Network settings *(disabled)* |
+| **300 s** | Battery charge/discharge cutoff voltages, Battery module count, Battery capacity, Battery type, SOC calibration cycle days *(all disabled by default)* |
 
 There is no user-configurable poll interval — intervals are tuned per-sensor to balance responsiveness against the inverter's one-connection limit.
 
@@ -102,10 +106,19 @@ There is no user-configurable poll interval — intervals are tuned per-sensor t
 | Current PV Production | Calculated — sum of all PV strings + PV meter (W) |
 | Current House Load | Calculated — net house consumption derived from grid, battery, and PV (W) |
 | Inverter Temperature | Inverter temperature (°C) |
+| Battery Min Cell Voltage | Lowest cell voltage in the pack (V, 3 d.p.) |
+| Battery Max Cell Voltage | Highest cell voltage in the pack (V, 3 d.p.) |
+| Dispatch Energy Flow Direction | Active energy flow as a string: PV to Grid, Battery to Grid, Grid to Battery, etc. |
+| Freq Dispatch Flag | Frequency dispatch active flag (0 = Normal, 1 = Active) |
 | Total Energy from PV | Lifetime PV generation (kWh) |
 | Total Energy Feed to Grid | Lifetime grid export (kWh) |
 | System Fault | Active fault code (0 = no fault) |
-| … and 80+ more | See the Devices page in HA for the full list |
+| Battery Capacity *(disabled)* | Battery pack nameplate capacity (kWh) |
+| Battery Type *(disabled)* | Battery type code from BMS |
+| Battery Module Count *(disabled)* | Number of battery modules installed |
+| Battery Charge/Discharge Cutoff Voltage *(disabled)* | Hardware voltage limits from BMS (V) |
+| PV Total Power (Inverter) *(disabled)* | Sum of all PV strings as reported by inverter register 0x0453 (W) |
+| … and 130+ more | See the Devices page in HA for the full list |
 
 ### Controls
 
@@ -148,9 +161,13 @@ There is no user-configurable poll interval — intervals are tuned per-sensor t
 | Discharging Period 1 Stop Time | Time | hh:mm |
 | Discharging Period 2 Start Time | Time | hh:mm |
 | Discharging Period 2 Stop Time | Time | hh:mm |
+| SOC Calibration Enable | Switch | Enables or disables the inverter's automatic scheduled SOC calibration feature |
+| SOC Calibration Cycle Mode | Select | One-shot or Recurring automatic calibration schedule (writes to 0x1902) |
+| SOC Calibration Cycle Days | Number | Interval in days between automatic calibration cycles when Recurring mode is active (1–30) |
 | Dispatch Reset | Button | Reset all dispatch registers immediately |
 | Synchronise Date & Time | Button | Sync inverter clock to HA system time |
 | Sync Dispatch State | Button | Reconcile HA switch states with the inverter (use after HA restart if dispatch was running) |
+| Reset Energy Totals | Button | **WARNING: clears all lifetime energy counters on the inverter.** Use only if you have intentionally replaced the inverter or need to zero out the totals. |
 
 ---
 

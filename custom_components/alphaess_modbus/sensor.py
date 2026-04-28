@@ -34,10 +34,22 @@ _DEVICE_CLASS_MAP = {
     "battery": SensorDeviceClass.BATTERY,
     "current": SensorDeviceClass.CURRENT,
     "energy": SensorDeviceClass.ENERGY,
+    "energy_storage": getattr(SensorDeviceClass, "ENERGY_STORAGE", None),
     "frequency": SensorDeviceClass.FREQUENCY,
     "power": SensorDeviceClass.POWER,
     "temperature": SensorDeviceClass.TEMPERATURE,
     "voltage": SensorDeviceClass.VOLTAGE,
+}
+
+_SENSOR_ENUM_LOOKUPS: dict[str, dict[int, str]] = {
+    "dispatch_energy_flow_direction": {
+        0: "Aging End",
+        1: "PV to Grid",
+        2: "PV to Battery",
+        3: "Battery to Grid",
+        4: "Grid to Battery",
+        5: "Battery to Grid 2",
+    },
 }
 
 _STATE_CLASS_MAP = {
@@ -81,7 +93,13 @@ class AlphaESSSensor(CoordinatorEntity[AlphaESSCoordinator], SensorEntity):
 
     @property
     def native_value(self):
-        return self.coordinator.data.get(self._reg.key) if self.coordinator.data else None
+        if not self.coordinator.data:
+            return None
+        raw = self.coordinator.data.get(self._reg.key)
+        lookup = _SENSOR_ENUM_LOOKUPS.get(self._reg.key)
+        if lookup is not None and raw is not None:
+            return lookup.get(int(raw), str(raw))
+        return raw
 
 
 class AlphaESSCalculatedSensor(CoordinatorEntity[AlphaESSCoordinator], SensorEntity):

@@ -40,6 +40,11 @@ BUTTON_DEFS = [
         "name": "Restart EMS",
         "icon": "mdi:restart",
     },
+    {
+        "key": "reset_energy_totals",
+        "name": "Reset Energy Totals",
+        "icon": "mdi:counter",
+    },
 ]
 
 
@@ -81,6 +86,8 @@ class AlphaESSButton(ButtonEntity):
             await self._coordinator.async_write_register(RESET_MODE_ADDR, 7)
         elif self._key == "restart_ems":
             await self._coordinator.async_write_register(RESET_MODE_ADDR, 8)
+        elif self._key == "reset_energy_totals":
+            await self._coordinator.async_write_register(RESET_MODE_ADDR, 1)
 
     async def _sync_dispatch_state(self) -> None:
         from .switch import _MUTEX_SWITCHES
