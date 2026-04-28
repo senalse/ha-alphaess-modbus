@@ -529,15 +529,24 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
                     min_value=-20, max_value=20, step=0.1, unit="kW",
                     icon="mdi:flash"),
 
-    # Smart export / smart charge params (dispatch-only, no direct register write)
+    ModbusNumberDef("force_import_cutoff_soc", "Force Import Cutoff SoC",
+                    address=0x0886,
+                    min_value=4, max_value=100, step=1, unit="%",
+                    icon="mdi:percent-box-outline"),
+    ModbusNumberDef("force_import_duration", "Force Import Duration",
+                    address=0x0887,
+                    min_value=0, max_value=480, step=5, unit="min",
+                    icon="mdi:clock-time-eight-outline"),
+    ModbusNumberDef("force_import_power", "Force Import Power",
+                    address=0x0881,
+                    min_value=0, max_value=20, step=0.1, unit="kW",
+                    icon="mdi:flash"),
+
+    # Smart export param (dispatch-only, no direct register write)
     ModbusNumberDef("max_export_power", "Max Export Power",
                     address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
                     icon="mdi:transmission-tower-export"),
-    ModbusNumberDef("max_import_power", "Max Import Power",
-                    address=None,
-                    min_value=0, max_value=20, step=0.1, unit="kW",
-                    icon="mdi:transmission-tower-import"),
 
     # Charging/discharging period times are handled by the time platform (time.py)
     # using ModbusTimeDef entries in TIME_REGISTERS below.

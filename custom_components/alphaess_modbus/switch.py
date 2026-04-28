@@ -41,21 +41,22 @@ _MUTEX_SWITCHES = [
     "force_charging",
     "force_discharging",
     "force_export",
+    "force_import",
     "dispatch",
     "excess_export",
     "smart_export",
-    "smart_charge",
 ]
 
 SWITCH_DEFS = [
     {"key": "force_charging",      "name": "Force Charging",       "icon": "mdi:battery-charging"},
     {"key": "force_discharging",   "name": "Force Discharging",    "icon": "mdi:battery-arrow-down"},
     {"key": "force_export",        "name": "Force Export",         "icon": "mdi:transmission-tower-export"},
+    {"key": "force_import",        "name": "Force Import",         "icon": "mdi:transmission-tower-import"},
+    {"key": "force_import_pause",  "name": "Force Import Pause",   "icon": "mdi:pause-circle"},
     {"key": "dispatch",            "name": "Dispatch",             "icon": "mdi:button-pointer"},
     {"key": "excess_export",       "name": "Excess Export",        "icon": "mdi:solar-power"},
     {"key": "excess_export_pause", "name": "Excess Export Pause",  "icon": "mdi:pause-circle"},
     {"key": "smart_export",        "name": "Smart Export",         "icon": "mdi:transmission-tower-export"},
-    {"key": "smart_charge",        "name": "Smart Charge",         "icon": "mdi:transmission-tower-import"},
 ]
 
 
@@ -102,6 +103,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
         self._is_on = False
         self._timer_cancel: asyncio.TimerHandle | None = None
+        self._duration_cancel: asyncio.TimerHandle | None = None
 
     async def async_added_to_hass(self) -> None:
         state = await self.async_get_last_state()
@@ -113,7 +115,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         return self._is_on
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        if self.switch_key == "excess_export_pause":
+        if self.switch_key in ("excess_export_pause", "force_import_pause"):
             await self._handle_pause_turn_on()
             return
 
@@ -133,21 +135,26 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                 await self._start_force_discharging()
             elif self.switch_key == "force_export":
                 await self._start_force_export()
+            elif self.switch_key == "force_import":
+                duration_min = self._num("force_import_duration", 120.0)
+                duration_s = int(duration_min * 60)
+                if duration_s <= 0:
+                    raise ValueError("Force import duration is 0 — set number.alphaess_inverter_force_import_duration to a non-zero value")
+                await self._start_force_import()
+                self._schedule_duration_off(duration_s)
             elif self.switch_key == "dispatch":
                 await self._start_dispatch()
             elif self.switch_key == "excess_export":
                 await self._start_excess_export()
             elif self.switch_key == "smart_export":
                 await self._start_smart_export()
-            elif self.switch_key == "smart_charge":
-                await self._start_smart_charge()
         except Exception as err:
             _LOGGER.error("Failed to start %s: %s", self.switch_key, err)
             self._is_on = False
             self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        if self.switch_key == "excess_export_pause":
+        if self.switch_key in ("excess_export_pause", "force_import_pause"):
             await self._handle_pause_turn_off()
             return
         await self._async_turn_off_silent()
@@ -157,10 +164,15 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._cancel_timer()
         self.async_write_ha_state()
         await self._coordinator.async_reset_dispatch()
-        # When excess_export stops, also clear the pause switch
+        # When a switch with a paired pause stops, also clear the pause switch
+        pause_key = None
         if self.switch_key == "excess_export":
+            pause_key = "excess_export_pause"
+        elif self.switch_key == "force_import":
+            pause_key = "force_import_pause"
+        if pause_key:
             switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
-            pause_sw = switches.get("excess_export_pause")
+            pause_sw = switches.get(pause_key)
             if pause_sw and pause_sw.is_on:
                 pause_sw._is_on = False
                 pause_sw._cancel_timer()
@@ -170,6 +182,27 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         if self._timer_cancel:
             self._timer_cancel.cancel()
             self._timer_cancel = None
+        if self._duration_cancel:
+            self._duration_cancel.cancel()
+            self._duration_cancel = None
+
+    def _cancel_refresh_timer(self) -> None:
+        if self._timer_cancel:
+            self._timer_cancel.cancel()
+            self._timer_cancel = None
+
+    def _schedule_duration_off(self, duration_seconds: int) -> None:
+        if self._duration_cancel:
+            self._duration_cancel.cancel()
+        loop = self.hass.loop
+
+        async def _turn_off():
+            await self._async_turn_off_silent()
+
+        def _callback():
+            asyncio.ensure_future(_turn_off(), loop=loop)
+
+        self._duration_cancel = loop.call_later(duration_seconds, _callback)
 
     def _schedule_auto_off(self, duration_seconds: int) -> None:
         self._cancel_timer()
@@ -353,14 +386,61 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._is_on = False
         self._cancel_timer()
         self.async_write_ha_state()
-        # If excess_export is still active, resume it immediately
         switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
-        excess_sw = switches.get("excess_export")
-        if excess_sw and excess_sw.is_on:
-            try:
-                await excess_sw._start_excess_export()
-            except Exception as err:
-                _LOGGER.error("Failed to resume excess_export after pause: %s", err)
+        if self.switch_key == "excess_export_pause":
+            parent_sw = switches.get("excess_export")
+            if parent_sw and parent_sw.is_on:
+                try:
+                    await parent_sw._start_excess_export()
+                except Exception as err:
+                    _LOGGER.error("Failed to resume excess_export after pause: %s", err)
+        elif self.switch_key == "force_import_pause":
+            parent_sw = switches.get("force_import")
+            if parent_sw and parent_sw.is_on:
+                try:
+                    await parent_sw._start_force_import()
+                except Exception as err:
+                    _LOGGER.error("Failed to resume force_import after pause: %s", err)
+
+    # ------------------------------------------------------------------
+    # Force Import
+    # ------------------------------------------------------------------
+
+    async def _start_force_import(self) -> None:
+        d = self._coordinator.data or {}
+        pv_production_w = _calc_pv_production(d)
+        house_load_w = _calc_house_load(d)
+        if house_load_w is None or pv_production_w is None:
+            self._schedule_force_import_refresh()
+            return
+        import_power_kw = self._num("force_import_power", 5.0)
+        cutoff_soc = self._num("force_import_cutoff_soc", 100.0)
+        soc_raw = int(cutoff_soc / DISPATCH_SOC_SCALE)
+        charge_power_w = max(0, int(import_power_kw * 1000) - int(house_load_w) + int(pv_production_w))
+        power_raw = int(32000 - charge_power_w)
+        await self._coordinator.async_write_dispatch([
+            1, 0, power_raw, 0, 32000, DISPATCH_MODE_SOC_CONTROL, soc_raw, 0, 30,
+        ])
+        self._schedule_force_import_refresh()
+
+    def _schedule_force_import_refresh(self) -> None:
+        self._cancel_refresh_timer()
+        loop = self.hass.loop
+
+        async def _refresh():
+            if not self._is_on:
+                return
+            switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+            pause_sw = switches.get("force_import_pause")
+            if pause_sw and pause_sw.is_on:
+                self._schedule_force_import_refresh()
+                return
+            await self._start_force_import()
+
+        def _callback():
+            asyncio.ensure_future(_refresh(), loop=loop)
+
+        self._timer_cancel = loop.call_later(25, _callback)
 
     # ------------------------------------------------------------------
     # Smart Export
@@ -381,44 +461,20 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         await self._coordinator.async_write_dispatch([
             1, 0, power_raw, 0, 32000, DISPATCH_MODE_SOC_CONTROL, soc_raw, 0, 30,
         ])
-        self._schedule_smart_refresh("smart_export")
+        self._schedule_smart_refresh()
 
     # ------------------------------------------------------------------
-    # Smart Charge
+    # 30s refresh for smart_export
     # ------------------------------------------------------------------
 
-    async def _start_smart_charge(self) -> None:
-        d = self._coordinator.data or {}
-        pv_production_w = _calc_pv_production(d)
-        house_load_w = _calc_house_load(d)
-        if house_load_w is None or pv_production_w is None:
-            self._schedule_smart_refresh("smart_charge")
-            return
-        max_import_kw = self._num("max_import_power", 5.0)
-        cutoff_soc = self._num("force_charging_cutoff_soc", 100.0)
-        soc_raw = int(cutoff_soc / DISPATCH_SOC_SCALE)
-        charge_power_w = max(0, int(max_import_kw * 1000) - int(house_load_w) + int(pv_production_w))
-        power_raw = int(32000 - charge_power_w)
-        await self._coordinator.async_write_dispatch([
-            1, 0, power_raw, 0, 32000, DISPATCH_MODE_SOC_CONTROL, soc_raw, 0, 30,
-        ])
-        self._schedule_smart_refresh("smart_charge")
-
-    # ------------------------------------------------------------------
-    # Shared 30s refresh for smart switches
-    # ------------------------------------------------------------------
-
-    def _schedule_smart_refresh(self, switch_key: str) -> None:
+    def _schedule_smart_refresh(self) -> None:
         self._cancel_timer()
         loop = self.hass.loop
 
         async def _refresh():
             if not self._is_on:
                 return
-            if switch_key == "smart_export":
-                await self._start_smart_export()
-            else:
-                await self._start_smart_charge()
+            await self._start_smart_export()
 
         def _callback():
             asyncio.ensure_future(_refresh(), loop=loop)

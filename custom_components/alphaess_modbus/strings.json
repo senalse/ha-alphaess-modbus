@@ -44,13 +44,17 @@
         "name": "Excess Export Pause",
         "description": "Temporarily pauses Excess Export without cancelling it. Turn off to immediately resume exporting."
       },
+      "force_import": {
+        "name": "Force Import",
+        "description": "Imports from the grid at the configured power, dynamically adjusted for live house load and PV so total grid draw stays at the target. Recalculates every 25 seconds. Stops after the set duration or when SoC reaches the cutoff. Turns off any other active dispatch switch."
+      },
+      "force_import_pause": {
+        "name": "Force Import Pause",
+        "description": "Temporarily pauses Force Import without cancelling it. Turn off to immediately resume importing."
+      },
       "smart_export": {
         "name": "Smart Export",
         "description": "Exports up to Max Export Power to the grid, dynamically accounting for live house load and PV production. Recalculates every 30 seconds. Turns off any other active dispatch switch."
-      },
-      "smart_charge": {
-        "name": "Smart Charge",
-        "description": "Charges the battery up to Max Import Power from the grid, offset by live PV production. Recalculates every 30 seconds. Turns off any other active dispatch switch."
       },
       "soc_calibration": {
         "name": "SOC Calibration",
@@ -118,13 +122,21 @@
         "name": "Dispatch Duration",
         "description": "How long the Dispatch switch runs before switching off automatically."
       },
+      "force_import_power": {
+        "name": "Force Import Power",
+        "description": "Target total grid import rate when Force Import is active. Actual battery charge rate adjusts dynamically based on live house load and PV."
+      },
+      "force_import_cutoff_soc": {
+        "name": "Force Import Cutoff SoC",
+        "description": "Force Import stops when the battery reaches this SoC."
+      },
+      "force_import_duration": {
+        "name": "Force Import Duration",
+        "description": "How long Force Import runs before switching off automatically."
+      },
       "max_export_power": {
         "name": "Max Export Power",
         "description": "Maximum grid export rate for the Smart Export switch."
-      },
-      "max_import_power": {
-        "name": "Max Import Power",
-        "description": "Maximum grid import rate for the Smart Charge switch."
       },
       "charging_period_1_start_hour": {
         "name": "Charging Period 1 Start Hour",
