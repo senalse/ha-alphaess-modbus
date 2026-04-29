@@ -230,6 +230,34 @@ Example Lovelace dashboard configurations are included in the [`examples/`](exam
 
 ---
 
+## Changelog
+
+### v1.7.1
+- **fix:** single-register writes (SOC calibration switches, mode selects, number setpoints, buttons, time entities) were using Modbus FC16 (Write Multiple Registers) instead of FC6 (Write Single Register). Many AlphaESS inverters reject FC16 for individual registers with exception code 2 (Illegal Data Address). All single-register writes now correctly use FC6. Dispatch block writes (9 registers at 0x0880) remain on FC16.
+
+### v1.7.0
+- **feat:** 18 new entities - battery health (SoH, cell voltages, cell temps, relay status, module count, capacity), dispatch diagnostics (energy flow direction, freq dispatch flag and power/frequency setpoints), and SOC calibration scheduling (enable switch, trigger switch, cycle mode select, cycle days number)
+
+### v1.6.5
+- **feat:** Force Charging Hold and Force Import Hold switches - hold the inverter in force-charge or force-import mode indefinitely without a dispatch timeout
+
+### v1.6.4
+- **fix:** force discharge and force export now stop 1% above the SOC cutoff to guarantee zero grid draw on the GloBird ZeroHero plan (previously the inverter could briefly draw from grid as SoC hit the limit)
+
+### v1.6.3
+- **fix:** add SOC watcher to stop force discharging/export immediately when cutoff SoC is reached
+
+### v1.6.2
+- **fix:** use 60 s refresh loop for force discharging/export to guarantee dispatch reset on SOC cutoff
+
+### v1.6.1
+- **fix:** stop force discharge/charge/export immediately when SOC cutoff is reached
+
+### v1.6.0
+- **feat:** add Force Import switch, replace Smart Charge
+
+---
+
 ## Credits
 
 This integration is based on the YAML package developed by **Axel Koegler** and documented at [projects.hillviewlodge.ie/alphaess](https://projects.hillviewlodge.ie/alphaess/). All Modbus register mappings are derived from that work and the AlphaESS Modbus register documentation.
