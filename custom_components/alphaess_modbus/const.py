@@ -372,8 +372,6 @@ SENSOR_REGISTERS: list[ModbusSensorDef] = [
     ModbusSensorDef("soh_battery", "Battery State of Health",
                     0x011B, "int16", unit="%", device_class="battery",
                     scale=0.1, scan_interval=10),
-    ModbusSensorDef("soc_calibration", "SOC Calibration",
-                    0x1901, "int16", scan_interval=60),
     ModbusSensorDef("battery_status", "Battery Status",
                     0x0103, "int16", scan_interval=60),
     ModbusSensorDef("battery_voltage", "Battery Voltage",
@@ -417,9 +415,6 @@ SENSOR_REGISTERS: list[ModbusSensorDef] = [
                     scale=0.001, precision=2, scan_interval=300, enabled_by_default=False),
     ModbusSensorDef("battery_type", "Battery Type",
                     0x011A, "uint16", scan_interval=300, enabled_by_default=False),
-    ModbusSensorDef("soc_calibration_enable", "SOC Calibration Enable (raw)",
-                    0x1900, "uint16", scan_interval=60, enabled_by_default=False),
-
     # --- PV settings (read-only view) ---
     ModbusSensorDef("max_feed_to_grid", "Max Feed to Grid",
                     0x0800, "uint16", unit="%", scan_interval=5),
@@ -586,10 +581,6 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
                     min_value=0, max_value=20, step=0.1, unit="kW",
                     icon="mdi:transmission-tower-export"),
 
-    ModbusNumberDef("soc_calibration_cycle_days", "SOC Calibration Cycle Days",
-                    address=0x1903, min_value=1, max_value=30, step=1, unit="days",
-                    icon="mdi:calendar-sync"),
-
     # Charging/discharging period times are handled by the time platform (time.py)
     # using ModbusTimeDef entries in TIME_REGISTERS below.
 ]
@@ -637,14 +628,6 @@ SELECT_REGISTERS: list[ModbusSelectDef] = [
         values=[3000, 4000, 4600, 5000, 6000, 8000, 10000, 12000, 15000, 20000],
         icon="mdi:transmission-tower",
     ),
-    ModbusSelectDef(
-        "soc_calibration_cycle_mode",
-        "SOC Calibration Cycle Mode",
-        address=0x1902,
-        options=["One-shot", "Recurring"],
-        values=[0, 1],
-        icon="mdi:calendar-sync",
-    ),
 ]
 
 # ---------------------------------------------------------------------------
@@ -674,10 +657,6 @@ DISPATCH_SOC_SCALE = 0.392  # %/bit
 
 # Charging/discharging time period control register
 CHARGING_TIME_PERIOD_ADDR = 0x084F
-
-# SOC calibration registers
-SOC_CALIBRATION_ADDR = 0x1901
-SOC_CALIBRATION_ENABLE_ADDR = 0x1900
 
 # Reset/restart register
 RESET_MODE_ADDR = 0x1100

@@ -64,14 +64,6 @@
         "name": "Smart Export",
         "description": "Exports up to Max Export Power to the grid, dynamically accounting for live house load and PV production. Recalculates every 30 seconds. Turns off any other active dispatch switch."
       },
-      "soc_calibration": {
-        "name": "SOC Calibration",
-        "description": "Triggers a full charge/discharge calibration cycle so the BMS can recalibrate its SoC reading. This is a slow multi-hour process. The inverter clears this flag automatically when the cycle completes."
-      },
-      "soc_calibration_enable": {
-        "name": "SOC Calibration Enable",
-        "description": "Enables or disables the inverter's automatic scheduled SOC calibration feature. When enabled, the inverter will run a calibration cycle according to the configured cycle mode and interval."
-      }
     },
     "number": {
       "charging_cutoff_soc": {
@@ -149,10 +141,6 @@
       "max_export_power": {
         "name": "Max Export Power",
         "description": "Maximum grid export rate for the Smart Export switch."
-      },
-      "soc_calibration_cycle_days": {
-        "name": "SOC Calibration Cycle Days",
-        "description": "Interval in days between automatic SOC calibration cycles when Recurring mode is selected."
       },
       "charging_period_1_start_hour": {
         "name": "Charging Period 1 Start Hour",
@@ -232,10 +220,6 @@
         "name": "Inverter AC Limit",
         "description": "Your inverter's maximum AC output rating. Used by Excess Export to cap dispatch power and avoid overloading the inverter."
       },
-      "soc_calibration_cycle_mode": {
-        "name": "SOC Calibration Cycle Mode",
-        "description": "Controls whether the automatic SOC calibration runs once (One-shot) or repeats on a schedule (Recurring)."
-      }
     },
     "button": {
       "dispatch_reset": {
