@@ -108,4 +108,10 @@ class AlphaESSModbusClient:
                 raise ModbusException(f"Error writing {address:#06x}: {result}")
 
     async def write_register(self, address: int, value: int) -> None:
-        await self.write_registers(address, [value])
+        async with self._lock:
+            await self._ensure_connected()
+            result = await self._client.write_register(
+                address, value, **{_SLAVE_KWARG: self._slave_id}
+            )
+            if result.isError():
+                raise ModbusException(f"Error writing {address:#06x}: {result}")
