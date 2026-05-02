@@ -4,9 +4,6 @@ from dataclasses import dataclass, field
 DOMAIN = "alphaess_modbus"
 DEFAULT_PORT = 502
 DEFAULT_SLAVE = 85
-DEFAULT_SCAN_INTERVAL = 30
-MODBUS_HUB = "alphaess_modbus_hub"
-
 PLATFORMS = ["sensor", "number", "select", "switch", "button", "time"]
 
 # ---------------------------------------------------------------------------
