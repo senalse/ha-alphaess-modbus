@@ -23,7 +23,6 @@ Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewl
 - **Smart Export** — dynamically exports up to a configurable max power, accounting for live house load and PV so grid export stays at the target without overloading the inverter
 - **Battery cell health** — min/max cell voltages polled every 60 s; charge/discharge cutoff voltages, module count, capacity, and type available as diagnostic sensors
 - **Dispatch diagnostics** — energy flow direction (human-readable), PV switch state, frequency dispatch flag, power, and frequency
-- **SOC Calibration scheduling** — enable/disable the inverter's automatic calibration feature, set cycle mode (One-shot / Recurring), and configure the cycle interval in days
 - **Charging / Discharging time periods** — configure up to two charge and discharge windows
 - **Dispatch mode selector** — Battery only, SoC Control, Load Following, Maximise Output, and more
 - **Max Feed to Grid** — set grid export limit as % of installed PV capacity
@@ -77,7 +76,7 @@ Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewl
 
 ## Poll Intervals
 
-Each sensor has a fixed poll interval hardcoded in the integration. The coordinator runs a 1-second master loop and skips registers that aren't due yet.
+Each sensor has a fixed poll interval hardcoded in the integration. The coordinator runs a 2-second master loop; contiguous registers due in the same cycle are batched into a single Modbus read. Individual registers are skipped when their own `scan_interval` hasn't elapsed yet.
 
 | Interval | Sensors |
 |----------|---------|
@@ -360,9 +359,6 @@ These are read-only sensor views of the scheduling registers. The writable equiv
 | Discharging Period 1 Stop Time | Time | hh:mm |
 | Discharging Period 2 Start Time | Time | hh:mm |
 | Discharging Period 2 Stop Time | Time | hh:mm |
-| SOC Calibration Enable | Switch | Enables or disables the inverter's automatic scheduled SOC calibration feature |
-| SOC Calibration Cycle Mode | Select | One-shot or Recurring automatic calibration schedule (writes to 0x1902) |
-| SOC Calibration Cycle Days | Number | Interval in days between automatic calibration cycles when Recurring mode is active (1–30) |
 | Dispatch Reset | Button | Reset all dispatch registers immediately |
 | Synchronise Date & Time | Button | Sync inverter clock to HA system time |
 | Sync Dispatch State | Button | Reconcile HA switch states with the inverter (use after HA restart if dispatch was running) |
@@ -432,6 +428,20 @@ Example Lovelace dashboard configurations are included in the [`examples/`](exam
 ---
 
 ## Changelog
+
+### v1.8.0
+- **feat:** batch contiguous Modbus register reads — adjacent registers (gap <= 4) are merged into a single `read_holding_registers` call per cycle, reducing typical transaction count from ~50 to ~10 per poll. Coordinator poll interval bumped from 1 s to 2 s; per-sensor `scan_interval` cadence is unchanged.
+- **feat:** SOC watcher samples battery SoC every 2 s (down from 10 s) while a force-discharge, force-export, or SOC-watcher switch is active, tightening the cutoff margin for the zero-grid-draw invariant.
+- **feat:** number and select sliders now source their displayed value from live coordinator data (the actual inverter register) rather than the last HA-saved state after a restart — so the UI immediately reflects changes made via the AlphaESS app or another client.
+- **fix:** switch.py no longer looks up number/select values by hardcoded `hass.states.get("number.alphaess_inverter_*")` entity ID slugs. Values are now read from `coordinator.numbers` / `coordinator.selects`, which are seeded by the entities themselves on startup and kept current on every write. Dispatch mode and parameter sliders work correctly even if the device is renamed in HA.
+
+### v1.7.4
+- **fix:** 15 dispatch-parameter `ModbusNumberDef` entries (force-charging/discharging/export/import cutoff SoC, duration, and power; dispatch cutoff SoC, duration, and power) now have `address=None`. Previously they carried misleading register addresses that were never written directly, but could have caused silent state corruption if called via `async_write_register`.
+
+### v1.7.3
+- **fix:** track async tasks with `hass.async_create_task` so a reload mid-dispatch no longer leaks coroutines or logs "Task was destroyed but it is pending" errors
+- **fix:** raise `ConfigEntryNotReady` on connection failure so HA retries automatically instead of marking the entry permanently failed
+- **feat:** add hassfest and HACS validation CI (`.github/workflows/validate.yml`)
 
 ### v1.7.2
 - **fix:** remove SOC calibration scheduling entities (SOC Calibration switch, SOC Calibration Enable switch, SOC Calibration Cycle Mode select, SOC Calibration Cycle Days number) - registers 0x1900-0x1903 return Illegal Data Address on current inverter firmware; the read-only Battery SOC Calibration status sensor at 0x012F remains. Use a Home Assistant automation to trigger a calibration cycle via the AlphaESS app or inverter web UI instead.
