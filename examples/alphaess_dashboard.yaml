@@ -324,14 +324,6 @@ views:
                 name: Battery Fault
               - type: section
                 label: Maintenance
-              - entity: switch.alphaess_inverter_soc_calibration
-                name: SOC Calibration
-              - entity: switch.alphaess_inverter_soc_calibration_enable
-                name: SOC Calibration Schedule
-              - entity: select.alphaess_inverter_soc_calibration_cycle_mode
-                name: Calibration Mode
-              - entity: number.alphaess_inverter_soc_calibration_cycle_days
-                name: Calibration Interval (days)
               - entity: button.alphaess_inverter_synchronise_date_time
                 name: Sync Date & Time
               - entity: button.alphaess_inverter_restart_pcs
