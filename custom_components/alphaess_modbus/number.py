@@ -67,8 +67,6 @@ class AlphaESSNumber(RestoreEntity, NumberEntity):
         self._attr_unique_id = f"{entry.entry_id}_{reg.key}"
         self._attr_name = reg.name
         self._attr_translation_key = reg.key
-        self._attr_native_min_value = reg.min_value
-        self._attr_native_max_value = reg.max_value
         self._attr_native_step = reg.step
         self._attr_native_unit_of_measurement = reg.unit
         self._attr_mode = NumberMode.SLIDER
@@ -88,6 +86,18 @@ class AlphaESSNumber(RestoreEntity, NumberEntity):
         self.async_on_remove(
             self._coordinator.async_add_listener(self.async_write_ha_state)
         )
+
+    @property
+    def native_max_value(self) -> float:
+        if self._reg.ac_limit_scaled:
+            return self._coordinator.ac_limit_w / 1000
+        return self._reg.max_value
+
+    @property
+    def native_min_value(self) -> float:
+        if self._reg.ac_limit_scaled and self._reg.min_value < 0:
+            return -(self._coordinator.ac_limit_w / 1000)
+        return self._reg.min_value
 
     @property
     def available(self) -> bool:

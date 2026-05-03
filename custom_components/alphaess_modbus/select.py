@@ -15,6 +15,14 @@ from .coordinator import AlphaESSCoordinator
 LOCAL_ONLY_SELECTS = {"inverter_ac_limit"}
 
 
+def _parse_ac_limit_w(option: str) -> int:
+    """Convert '5 kW' -> 5000, '4.6 kW' -> 4600, etc."""
+    try:
+        return int(float(option.split()[0]) * 1000)
+    except (ValueError, IndexError):
+        return 20000
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
@@ -52,6 +60,8 @@ class AlphaESSSelect(RestoreEntity, SelectEntity):
         # Seed the coordinator cache so switch.py can read dispatch_mode immediately.
         if self._current_option:
             self._coordinator.selects[self._reg.key] = self._current_option
+            if self._reg.key == "inverter_ac_limit":
+                self._coordinator.ac_limit_w = _parse_ac_limit_w(self._current_option)
         self.async_on_remove(
             self._coordinator.async_add_listener(self.async_write_ha_state)
         )
@@ -77,6 +87,9 @@ class AlphaESSSelect(RestoreEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         self._current_option = option
         self._coordinator.selects[self._reg.key] = option
+        if self._reg.key == "inverter_ac_limit":
+            self._coordinator.ac_limit_w = _parse_ac_limit_w(option)
+            self._coordinator.async_update_listeners()
         self.async_write_ha_state()
 
         if self._reg.key in LOCAL_ONLY_SELECTS:

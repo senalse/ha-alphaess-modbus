@@ -50,6 +50,7 @@ class ModbusNumberDef:
     unit: str | None = None
     mode: str = "slider"
     icon: str | None = None
+    ac_limit_scaled: bool = False
 
 
 @dataclass
@@ -524,7 +525,7 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
     ModbusNumberDef("force_charging_power", "Force Charging Power",
                     address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
-                    icon="mdi:flash"),
+                    icon="mdi:flash", ac_limit_scaled=True),
     ModbusNumberDef("force_discharging_cutoff_soc", "Force Discharging Cutoff SoC",
                     address=None,
                     min_value=4, max_value=100, step=1, unit="%",
@@ -536,7 +537,7 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
     ModbusNumberDef("force_discharging_power", "Force Discharging Power",
                     address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
-                    icon="mdi:flash"),
+                    icon="mdi:flash", ac_limit_scaled=True),
     ModbusNumberDef("force_export_cutoff_soc", "Force Export Cutoff SoC",
                     address=None,
                     min_value=4, max_value=100, step=1, unit="%",
@@ -548,7 +549,7 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
     ModbusNumberDef("force_export_power", "Force Export Power",
                     address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
-                    icon="mdi:flash"),
+                    icon="mdi:flash", ac_limit_scaled=True),
     ModbusNumberDef("dispatch_cutoff_soc", "Dispatch Cutoff SoC",
                     address=None,
                     min_value=4, max_value=100, step=1, unit="%",
@@ -560,7 +561,7 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
     ModbusNumberDef("dispatch_power", "Dispatch Power",
                     address=None,
                     min_value=-20, max_value=20, step=0.1, unit="kW",
-                    icon="mdi:flash"),
+                    icon="mdi:flash", ac_limit_scaled=True),
     ModbusNumberDef("force_import_cutoff_soc", "Force Import Cutoff SoC",
                     address=None,
                     min_value=4, max_value=100, step=1, unit="%",
@@ -572,11 +573,11 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
     ModbusNumberDef("force_import_power", "Force Import Power",
                     address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
-                    icon="mdi:flash"),
+                    icon="mdi:flash", ac_limit_scaled=True),
     ModbusNumberDef("max_export_power", "Max Export Power",
                     address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
-                    icon="mdi:transmission-tower-export"),
+                    icon="mdi:transmission-tower-export", ac_limit_scaled=True),
 
     # Charging/discharging period times are handled by the time platform (time.py)
     # using ModbusTimeDef entries in TIME_REGISTERS below.
