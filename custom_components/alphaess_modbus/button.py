@@ -110,16 +110,14 @@ class AlphaESSButton(ButtonEntity):
                 inferred_key = "dispatch"
             sw = switches.get(inferred_key)
             if sw:
-                sw._is_on = True
-                sw.async_write_ha_state()
+                await sw.async_force_on()
                 _LOGGER.info("sync_dispatch_state: dispatch active (power=%s W), marked %s on", power, inferred_key)
         elif not dispatch_on:
             # Inverter dispatch is off — clear any switches still showing on in HA
             cleared = []
             for key, sw in switches.items():
                 if sw.is_on:
-                    sw._is_on = False
-                    sw.async_write_ha_state()
+                    await sw.async_force_off()
                     cleared.append(key)
             if cleared:
                 _LOGGER.info("sync_dispatch_state: cleared stale on-state for %s", cleared)

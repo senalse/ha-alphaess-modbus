@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT, Platform
+from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
@@ -12,14 +12,21 @@ from .modbus_client import AlphaESSModbusClient
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    from homeassistant.exceptions import ConfigEntryNotReady
+
+    host = entry.data[CONF_HOST]
+    port = entry.data[CONF_PORT]
     client = AlphaESSModbusClient(
-        host=entry.data[CONF_HOST],
-        port=entry.data[CONF_PORT],
+        host=host,
+        port=port,
         slave_id=entry.data[CONF_SLAVE_ID],
     )
-    await client.connect()
+    try:
+        await client.connect()
+    except Exception as err:
+        raise ConfigEntryNotReady(f"Cannot connect to {host}:{port}: {err}") from err
     if not client.connected:
-        return False
+        raise ConfigEntryNotReady(f"Cannot connect to {host}:{port}")
 
     coordinator = AlphaESSCoordinator(hass, client)
     await coordinator.async_config_entry_first_refresh()

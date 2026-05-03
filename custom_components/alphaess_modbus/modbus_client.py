@@ -4,6 +4,7 @@ import asyncio
 import inspect
 import logging
 import struct
+import time
 from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
@@ -15,8 +16,8 @@ _LOGGER = logging.getLogger(__name__)
 _sig = inspect.signature(AsyncModbusTcpClient.read_holding_registers).parameters
 _SLAVE_KWARG = "device_id" if "device_id" in _sig else "slave"
 
-_CONNECT_RETRIES = 5
-_CONNECT_RETRY_DELAY = 3.0  # seconds between retries
+_CONNECT_RETRIES = 2
+_CONNECT_RETRY_DELAY = 1.0  # seconds between retries
 
 
 class AlphaESSModbusClient:
@@ -26,24 +27,31 @@ class AlphaESSModbusClient:
         self._slave_id = slave_id
         self._client: AsyncModbusTcpClient | None = None
         self._lock = asyncio.Lock()
+        self._connect_lock = asyncio.Lock()
+        self._consecutive_failures: int = 0
+        self._skip_until: float = 0.0
 
     @property
     def connected(self) -> bool:
         return self._client is not None and self._client.connected
 
     async def connect(self) -> None:
-        """Connect with retries — inverter may refuse immediately after a prior close."""
-        self._client = AsyncModbusTcpClient(self._host, port=self._port, timeout=5)
-        for attempt in range(_CONNECT_RETRIES):
-            await self._client.connect()
-            if self._client.connected:
-                return
-            if attempt < _CONNECT_RETRIES - 1:
-                _LOGGER.debug(
-                    "Connect attempt %d/%d failed, retrying in %.0fs",
-                    attempt + 1, _CONNECT_RETRIES, _CONNECT_RETRY_DELAY,
-                )
-                await asyncio.sleep(_CONNECT_RETRY_DELAY)
+        """Connect with retries — inverter may refuse immediately after a prior close.
+
+        Guarded by _connect_lock so concurrent callers coalesce into one attempt.
+        """
+        async with self._connect_lock:
+            self._client = AsyncModbusTcpClient(self._host, port=self._port, timeout=5)
+            for attempt in range(_CONNECT_RETRIES):
+                await self._client.connect()
+                if self._client.connected:
+                    return
+                if attempt < _CONNECT_RETRIES - 1:
+                    _LOGGER.debug(
+                        "Connect attempt %d/%d failed, retrying in %.0fs",
+                        attempt + 1, _CONNECT_RETRIES, _CONNECT_RETRY_DELAY,
+                    )
+                    await asyncio.sleep(_CONNECT_RETRY_DELAY)
 
     async def close(self) -> None:
         if self._client:
@@ -52,9 +60,36 @@ class AlphaESSModbusClient:
 
     async def _ensure_connected(self) -> None:
         if not self.connected:
+            # Backoff: after 3 consecutive failures hold off reconnects for 10 s so
+            # one disconnected cycle doesn't fire dozens of blocking retry loops.
+            if time.monotonic() < self._skip_until:
+                raise ModbusException("Reconnect backoff active")
             await self.connect()
+            if self.connected:
+                self._consecutive_failures = 0
+            else:
+                self._consecutive_failures += 1
+                if self._consecutive_failures >= 3:
+                    self._skip_until = time.monotonic() + 10.0
+                    _LOGGER.debug(
+                        "3 consecutive connect failures — backing off for 10 s"
+                    )
         if not self.connected:
             raise ModbusException("Not connected")
+
+    async def read_block(self, start: int, count: int) -> list[int]:
+        """Read `count` consecutive holding registers starting at `start`.
+
+        Returns a list of raw uint16 values; decoding is done by the caller.
+        """
+        async with self._lock:
+            await self._ensure_connected()
+            result = await self._client.read_holding_registers(
+                start, count=count, **{_SLAVE_KWARG: self._slave_id}
+            )
+            if result.isError():
+                raise ModbusException(f"Error reading block {start:#06x}+{count}: {result}")
+            return list(result.registers)
 
     async def read_register(self, address: int, data_type: str, count: int = 1) -> Any:
         async with self._lock:

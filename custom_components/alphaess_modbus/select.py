@@ -49,13 +49,34 @@ class AlphaESSSelect(RestoreEntity, SelectEntity):
         state = await self.async_get_last_state()
         if state and state.state in self._reg.options:
             self._current_option = state.state
+        # Seed the coordinator cache so switch.py can read dispatch_mode immediately.
+        if self._current_option:
+            self._coordinator.selects[self._reg.key] = self._current_option
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self.async_write_ha_state)
+        )
+
+    @property
+    def available(self) -> bool:
+        return self._coordinator.last_update_success
 
     @property
     def current_option(self) -> str | None:
+        # For register-backed selects, prefer the live coordinator value so the
+        # dropdown reflects the actual inverter state rather than the last HA state.
+        if self._reg.sensor_key and self._coordinator.data:
+            raw = self._coordinator.data.get(self._reg.sensor_key)
+            if raw is not None:
+                try:
+                    idx = self._reg.values.index(int(raw))
+                    return self._reg.options[idx]
+                except (ValueError, IndexError):
+                    pass
         return self._current_option
 
     async def async_select_option(self, option: str) -> None:
         self._current_option = option
+        self._coordinator.selects[self._reg.key] = option
         self.async_write_ha_state()
 
         if self._reg.key in LOCAL_ONLY_SELECTS:

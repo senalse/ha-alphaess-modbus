@@ -4,9 +4,6 @@ from dataclasses import dataclass, field
 DOMAIN = "alphaess_modbus"
 DEFAULT_PORT = 502
 DEFAULT_SLAVE = 85
-DEFAULT_SCAN_INTERVAL = 30
-MODBUS_HUB = "alphaess_modbus_hub"
-
 PLATFORMS = ["sensor", "number", "select", "switch", "button", "time"]
 
 # ---------------------------------------------------------------------------
@@ -59,10 +56,11 @@ class ModbusNumberDef:
 class ModbusSelectDef:
     key: str
     name: str
-    address: int
+    address: int | None
     options: list[str] = field(default_factory=list)
     values: list[int] = field(default_factory=list)
     icon: str | None = None
+    sensor_key: str | None = None  # coordinator.data key holding the raw value for this select
 
 
 @dataclass
@@ -513,69 +511,68 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
     ModbusNumberDef("max_feed_to_grid", "Max Feed to Grid",
                     0x0800, min_value=0, max_value=100, step=1, unit="%",
                     icon="mdi:percent-box-outline"),
+    # Dispatch-only params: address=None so no code path can write them directly.
+    # Values are read by switch.py and assembled into the 9-register dispatch sequence.
     ModbusNumberDef("force_charging_cutoff_soc", "Force Charging Cutoff SoC",
-                    address=0x0886,  # written via dispatch sequence, not direct register
+                    address=None,
                     min_value=4, max_value=100, step=1, unit="%",
                     icon="mdi:percent-box-outline"),
     ModbusNumberDef("force_charging_duration", "Force Charging Duration",
-                    address=0x0887,  # written via dispatch sequence
+                    address=None,
                     min_value=0, max_value=480, step=5, unit="min",
                     icon="mdi:clock-time-eight-outline"),
     ModbusNumberDef("force_charging_power", "Force Charging Power",
-                    address=0x0881,  # written via dispatch sequence
+                    address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
                     icon="mdi:flash"),
     ModbusNumberDef("force_discharging_cutoff_soc", "Force Discharging Cutoff SoC",
-                    address=0x0886,
+                    address=None,
                     min_value=4, max_value=100, step=1, unit="%",
                     icon="mdi:percent-box-outline"),
     ModbusNumberDef("force_discharging_duration", "Force Discharging Duration",
-                    address=0x0887,
+                    address=None,
                     min_value=0, max_value=480, step=5, unit="min",
                     icon="mdi:clock-time-eight-outline"),
     ModbusNumberDef("force_discharging_power", "Force Discharging Power",
-                    address=0x0881,
+                    address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
                     icon="mdi:flash"),
     ModbusNumberDef("force_export_cutoff_soc", "Force Export Cutoff SoC",
-                    address=0x0886,
+                    address=None,
                     min_value=4, max_value=100, step=1, unit="%",
                     icon="mdi:percent-box-outline"),
     ModbusNumberDef("force_export_duration", "Force Export Duration",
-                    address=0x0887,
+                    address=None,
                     min_value=0, max_value=480, step=5, unit="min",
                     icon="mdi:clock-time-eight-outline"),
     ModbusNumberDef("force_export_power", "Force Export Power",
-                    address=0x0881,
+                    address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
                     icon="mdi:flash"),
     ModbusNumberDef("dispatch_cutoff_soc", "Dispatch Cutoff SoC",
-                    address=0x0886,
+                    address=None,
                     min_value=4, max_value=100, step=1, unit="%",
                     icon="mdi:percent-box-outline"),
     ModbusNumberDef("dispatch_duration", "Dispatch Duration",
-                    address=0x0887,
+                    address=None,
                     min_value=0, max_value=480, step=5, unit="min",
                     icon="mdi:clock-time-eight-outline"),
     ModbusNumberDef("dispatch_power", "Dispatch Power",
-                    address=0x0881,
+                    address=None,
                     min_value=-20, max_value=20, step=0.1, unit="kW",
                     icon="mdi:flash"),
-
     ModbusNumberDef("force_import_cutoff_soc", "Force Import Cutoff SoC",
-                    address=0x0886,
+                    address=None,
                     min_value=4, max_value=100, step=1, unit="%",
                     icon="mdi:percent-box-outline"),
     ModbusNumberDef("force_import_duration", "Force Import Duration",
-                    address=0x0887,
+                    address=None,
                     min_value=0, max_value=480, step=5, unit="min",
                     icon="mdi:clock-time-eight-outline"),
     ModbusNumberDef("force_import_power", "Force Import Power",
-                    address=0x0881,
+                    address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
                     icon="mdi:flash"),
-
-    # Smart export param (dispatch-only, no direct register write)
     ModbusNumberDef("max_export_power", "Max Export Power",
                     address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
@@ -601,6 +598,7 @@ SELECT_REGISTERS: list[ModbusSelectDef] = [
         ],
         values=[0, 1, 2, 3],
         icon="mdi:battery-charging",
+        sensor_key="charging_time_period_control",
     ),
     ModbusSelectDef(
         "dispatch_mode",
@@ -618,6 +616,7 @@ SELECT_REGISTERS: list[ModbusSelectDef] = [
         ],
         values=[1, 2, 3, 4, 5, 6, 7, 19],
         icon="mdi:battery-arrow-up-outline",
+        sensor_key="dispatch_mode",
     ),
     ModbusSelectDef(
         "inverter_ac_limit",

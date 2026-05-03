@@ -83,13 +83,31 @@ class AlphaESSNumber(RestoreEntity, NumberEntity):
                 self._value = float(state.state)
             except ValueError:
                 pass
+        # Seed the coordinator cache so switch.py can read it immediately.
+        self._coordinator.numbers[self._reg.key] = self._value
+        self.async_on_remove(
+            self._coordinator.async_add_listener(self.async_write_ha_state)
+        )
 
     @property
-    def native_value(self) -> float:
+    def available(self) -> bool:
+        return self._coordinator.last_update_success
+
+    @property
+    def native_value(self) -> float | None:
+        # For register-backed numbers, prefer the live coordinator value so the
+        # slider reflects what the inverter actually has rather than the last
+        # HA-saved state (which may have drifted if the inverter was changed via
+        # the app or another client).
+        if self._reg.address is not None and self._coordinator.data:
+            v = self._coordinator.data.get(self._reg.key)
+            if v is not None:
+                return float(v)
         return self._value
 
     async def async_set_native_value(self, value: float) -> None:
         self._value = value
+        self._coordinator.numbers[self._reg.key] = value
         self.async_write_ha_state()
 
         if self._reg.key in DISPATCH_PARAM_KEYS:

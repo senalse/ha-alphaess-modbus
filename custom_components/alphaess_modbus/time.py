@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import logging
 
 from homeassistant.components.time import TimeEntity
 from homeassistant.config_entries import ConfigEntry
@@ -11,6 +12,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, TIME_REGISTERS, ModbusTimeDef
 from .coordinator import AlphaESSCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -51,5 +54,19 @@ class AlphaESSTime(CoordinatorEntity[AlphaESSCoordinator], TimeEntity):
         return datetime.time(int(hour), int(minute))
 
     async def async_set_value(self, value: datetime.time) -> None:
+        d = self.coordinator.data or {}
+        old_hour = d.get(f"{self._reg.key}_hour")
         await self.coordinator.async_write_register(self._reg.hour_address, value.hour)
-        await self.coordinator.async_write_register(self._reg.minute_address, value.minute)
+        try:
+            await self.coordinator.async_write_register(self._reg.minute_address, value.minute)
+        except Exception:
+            if old_hour is not None:
+                _LOGGER.warning(
+                    "Minute write failed for %s; rolling back hour register to %d",
+                    self._reg.key,
+                    int(old_hour),
+                )
+                await self.coordinator.async_write_register(
+                    self._reg.hour_address, int(old_hour)
+                )
+            raise
