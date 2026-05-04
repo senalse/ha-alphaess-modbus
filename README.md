@@ -265,13 +265,14 @@ These are read-only sensor views of the scheduling registers. The writable equiv
 | Inverter Serial Number | - | 60 s | |
 | Inverter Version | - | 60 s | DSP firmware version string |
 | Inverter ARM Version | - | 60 s | ARM firmware version string |
-| BMS Version | - | 60 s | |
-| LMU Version | - | 60 s | |
-| ISO Version | - | 60 s | |
-| EMS Version High | - | 60 s | |
-| EMS Version Middle | - | 60 s | |
-| EMS Version Low | - | 60 s | |
-| EMS Version Low Suffix | - | 60 s | |
+| BMS Version | - | 60 s | Formatted as V1.65 |
+| LMU Version | - | 60 s | Formatted as V1.65 |
+| ISO Version | - | 60 s | Formatted as V1.65 |
+| EMS Version | - | 60 s | Combined from four sub-registers, e.g. V1.0.23R1 |
+| EMS Version High *(disabled)* | - | 60 s | Raw EMS major version component |
+| EMS Version Middle *(disabled)* | - | 60 s | |
+| EMS Version Low *(disabled)* | - | 60 s | |
+| EMS Version Low Suffix *(disabled)* | - | 60 s | |
 | System Time YYMM *(disabled)* | - | 5 s | Raw year/month packed register |
 | System Time DDHH *(disabled)* | - | 5 s | Raw day/hour packed register |
 | System Time MMSS *(disabled)* | - | 5 s | Raw minute/second packed register |
@@ -326,26 +327,26 @@ These are read-only sensor views of the scheduling registers. The writable equiv
 | Force Discharging | Switch | Discharge battery at configured power/duration/cutoff SoC; auto-stops ~1% above cutoff to guarantee no grid draw during transition |
 | Force Export | Switch | Export to grid at configured power/duration/cutoff SoC; same zero-grid-draw auto-stop as Force Discharging |
 | Force Import | Switch | Import from grid at a target kW, dynamically adjusted for live PV so total grid draw stays at the target; stops at cutoff SoC |
-| Force Import Pause | Switch | Temporarily pause Force Import without losing its active state |
+| Force Import Pause | Binary sensor | On when Force Import is automatically paused; resumes automatically when conditions are met |
 | Dispatch | Switch | Generic dispatch — mode, power, SoC target, and duration all configurable independently |
 | Excess Export | Switch | Maximise PV export, reduce clipping; auto-pauses when house draws from grid, auto-resumes when PV recovers |
 | Excess Export Pause | Binary sensor | On when Excess Export has automatically paused due to grid import |
 | Smart Export | Switch | Dynamically exports up to Max Export Power, adjusted for live house load and PV (re-fires every 30 s) |
 | Force Charging Power | Number | Charging power in kW (0–20) |
 | Force Charging Duration | Number | Duration in minutes (0–480, step 5) |
-| Force Charging Cutoff SoC | Number | Stop charging at this SoC % |
+| Force Charging Stop at SoC | Number | Stop charging at this SoC % |
 | Force Discharging Power | Number | Discharging power in kW (0–20) |
 | Force Discharging Duration | Number | Duration in minutes (0–480, step 5) |
-| Force Discharging Cutoff SoC | Number | Stop discharging at this SoC % (switch auto-stops ~1% above this) |
+| Force Discharging Stop at SoC | Number | Stop discharging at this SoC % (switch auto-stops ~1% above this) |
 | Force Export Power | Number | Export power in kW (0–20) |
 | Force Export Duration | Number | Duration in minutes (0–480, step 5) |
-| Force Export Cutoff SoC | Number | Stop exporting at this SoC % (switch auto-stops ~1% above this) |
+| Force Export Stop at SoC | Number | Stop exporting at this SoC % (switch auto-stops ~1% above this) |
 | Force Import Power | Number | Target grid import in kW (0–20) |
 | Force Import Duration | Number | Duration in minutes (0–480, step 5) |
-| Force Import Cutoff SoC | Number | Stop importing at this SoC % |
-| Dispatch Power | Number | Dispatch power in kW (−20 to +20; negative = charge, positive = discharge/export) |
+| Force Import Stop at SoC | Number | Stop importing at this SoC % |
+| Dispatch Power | Number | Dispatch power in kW (−20 to +20; negative = charge, positive = discharge/export); defaults to 0 kW |
 | Dispatch Duration | Number | Duration in minutes (0–480, step 5) |
-| Dispatch Cutoff SoC | Number | SoC target % for the generic Dispatch switch |
+| Dispatch Stop at SoC | Number | SoC target % for the generic Dispatch switch |
 | Max Export Power | Number | Target grid export for Smart Export (kW) |
 | Dispatch Mode | Select | Operating mode for the generic Dispatch switch (Battery Only, SoC Control, Load Following, etc.) |
 | Charging / Discharging Settings | Select | Enable/disable time period control (Disable / Grid Charging / Discharge Time Control / Both) |
@@ -428,6 +429,20 @@ Example Lovelace dashboard configurations are included in the [`examples/`](exam
 ---
 
 ## Changelog
+
+### v1.9.5
+- **fix:** Force Discharging, Force Export, and Force Import duration sliders now correctly write the configured duration to the inverter (previously hardcoded to 60, 60, and 30 seconds respectively).
+- **fix:** Dispatch Power slider now initialises to 0 kW on first install instead of the slider minimum (-20 kW).
+- **fix:** Force Import Pause converted from a writable switch to a read-only binary sensor, consistent with Excess Export Pause.
+- **fix:** Added `icons.json` so all entities correctly display their icons in Home Assistant 2024.6+.
+- **fix:** Dispatch SoC and related dispatch-block sensors no longer show float artefacts (e.g. 99.96% instead of 100%).
+- **fix:** SoC threshold sliders across all dispatch modes renamed from "Cutoff SoC" to "Stop at SoC" for consistency. Entity IDs are unchanged.
+- **fix:** BMS Version, LMU Version, and ISO Version sensors now display in V1.65 format instead of the raw integer (165).
+- **fix:** Four raw EMS version registers are now combined into a single EMS Version sensor (e.g. V1.0.23R1). The raw sub-registers are still polled but disabled by default.
+- **fix:** Inverter model detection now uses a known-prefix lookup table (e.g. ALD -> Alphastore, SMILE-B3, SMILE-T10) before falling back to year-based regex parsing, giving more descriptive model names in the HA device card.
+
+### v1.9.4
+- **feat:** Excess Export now automatically pauses when the house load would cause grid import and resumes once PV production recovers. Excess Export Pause changed from a writable switch to a read-only binary sensor.
 
 ### v1.9.3
 - **fix:** inverter model and serial number are now read from the device on startup and shown in the HA device card, replacing the hardcoded "SMILE-M5-S-INV / SMILE series" string.
