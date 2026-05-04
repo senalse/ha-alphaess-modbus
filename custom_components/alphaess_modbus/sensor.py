@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -59,6 +61,21 @@ _STATE_CLASS_MAP = {
 }
 
 
+def _fmt_version(v: Any) -> str:
+    try:
+        n = int(v)
+        return f"V{n // 100}.{n % 100:02d}"
+    except (TypeError, ValueError):
+        return str(v)
+
+
+_SENSOR_FORMATTERS: dict[str, Callable[[Any], Any]] = {
+    "bms_version": _fmt_version,
+    "lmu_version": _fmt_version,
+    "iso_version": _fmt_version,
+}
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
@@ -69,6 +86,7 @@ async def async_setup_entry(
     entities += [
         AlphaESSCalculatedSensor(coordinator, entry, defn) for defn in CALCULATED_SENSORS
     ]
+    entities.append(AlphaESSEmsVersionSensor(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -99,6 +117,9 @@ class AlphaESSSensor(CoordinatorEntity[AlphaESSCoordinator], SensorEntity):
         lookup = _SENSOR_ENUM_LOOKUPS.get(self._reg.key)
         if lookup is not None and raw is not None:
             return lookup.get(int(raw), str(raw))
+        formatter = _SENSOR_FORMATTERS.get(self._reg.key)
+        if formatter is not None and raw is not None:
+            return formatter(raw)
         return raw
 
 
@@ -148,3 +169,49 @@ class AlphaESSCalculatedSensor(CoordinatorEntity[AlphaESSCoordinator], SensorEnt
             return max(0, int(pv) + int(battery) + int(grid))
 
         return None
+
+
+class AlphaESSCombinedSensor(CoordinatorEntity[AlphaESSCoordinator], SensorEntity):
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: AlphaESSCoordinator,
+        entry: ConfigEntry,
+        keys: list[str],
+        name: str,
+        unique_id_suffix: str,
+        icon: str | None = None,
+    ) -> None:
+        super().__init__(coordinator)
+        self._keys = keys
+        self._attr_name = name
+        self._attr_unique_id = f"{entry.entry_id}_{unique_id_suffix}"
+        self._attr_icon = icon
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
+
+    @property
+    def native_value(self) -> str | None:
+        if not self.coordinator.data:
+            return None
+        parts = [self.coordinator.data.get(k) for k in self._keys]
+        if any(p is None for p in parts):
+            return None
+        return self._format(*parts)
+
+    def _format(self, *parts: Any) -> str:
+        raise NotImplementedError
+
+
+class AlphaESSEmsVersionSensor(AlphaESSCombinedSensor):
+    def __init__(self, coordinator: AlphaESSCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(
+            coordinator, entry,
+            keys=["ems_version_high", "ems_version_middle", "ems_version_low", "ems_version_low_suffix"],
+            name="EMS Version",
+            unique_id_suffix="ems_version",
+            icon="mdi:chip",
+        )
+
+    def _format(self, high: Any, middle: Any, low: Any, suffix: Any) -> str:
+        return f"V{int(high)}.{int(middle)}.{int(low)}{suffix or ''}"
