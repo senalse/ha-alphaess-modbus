@@ -416,9 +416,7 @@ Example Lovelace dashboard configurations are included in the [`examples/`](exam
    - **power-flow-card-plus**: HACS → Frontend → search "Power Flow Card Plus" → Download
    - **ApexCharts Card**: HACS → Frontend → search "ApexCharts Card" → Download
 2. In Home Assistant go to **Settings → Dashboards → Add Dashboard**
-3. Switch to YAML mode and paste the contents of the example file
-
-   Or use the **Raw configuration editor** on an existing dashboard to add the views — paste the content starting from the `views:` key.
+3. Open the view you want to replace, click the three-dot menu → **Edit in YAML**, and paste the contents of the example file directly (the file starts with `title:` — no extra wrapping needed).
 
 4. Reload the dashboard browser tab after installing any custom cards
 
