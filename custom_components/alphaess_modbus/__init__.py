@@ -12,6 +12,29 @@ from .const import DOMAIN, PLATFORMS
 from .coordinator import AlphaESSCoordinator
 from .modbus_client import AlphaESSModbusClient
 
+_MODEL_PREFIXES: dict[str, str] = {
+    "SMILE-T10": "SMILE-T10",
+    "SMILE-M5": "SMILE-M5",
+    "SMILE-B3": "SMILE-B3",
+    "SMILE-S5": "SMILE-S5",
+    "SMILE5": "SMILE5",
+    "STORION": "STORION",
+    "ALD": "Alphastore",
+}
+
+
+def _detect_model(raw_sn: str) -> str:
+    if not raw_sn:
+        return "SMILE series"
+    sn_upper = raw_sn.upper()
+    for prefix in sorted(_MODEL_PREFIXES, key=len, reverse=True):
+        if sn_upper.startswith(prefix):
+            return _MODEL_PREFIXES[prefix]
+    _match = re.match(r"^(.+?)(?:20\d{2}|19\d{2})", raw_sn)
+    if _match:
+        return _match.group(1).rstrip("-_ ").strip() or "SMILE series"
+    return raw_sn[:20].strip() or "SMILE series"
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     from homeassistant.exceptions import ConfigEntryNotReady
@@ -34,11 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_config_entry_first_refresh()
 
     raw_sn = (coordinator.data.get("inverter_sn") or "").strip().rstrip("\x00").strip()
-    _match = re.match(r"^(.+?)\d{4}", raw_sn)
-    if _match:
-        _model = _match.group(1).rstrip("-_ ").strip() or "SMILE series"
-    else:
-        _model = raw_sn[:20].strip() if raw_sn else "SMILE series"
+    _model = _detect_model(raw_sn)
     _serial = raw_sn or None
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
