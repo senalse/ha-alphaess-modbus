@@ -428,6 +428,14 @@ Example Lovelace dashboard configurations are included in the [`examples/`](exam
 
 ## Changelog
 
+### v1.10.0-beta.4
+- **fix:** `local_ip`, `subnet_mask`, and `gateway` sensors were missing `state_class=None`, causing HA to treat them as numeric sensors. HA raised a `ValueError: could not convert string to float` on startup and failed to add the entities.
+- **fix:** Battery Capacity (`battery_capacity_kwh`) scale corrected from 0.001 to 0.1. This also fixes Battery Remaining Time which depends on the capacity value.
+- **fix:** Battery Remaining Time always returned 0 on ALD-series inverters. Replaced the raw register with a calculated sensor using live SOC, battery capacity, and battery power.
+- **feat:** Dispatch PV Switch (`register 0x088A`) is now enabled by default.
+- **feat:** `local_ip`, `subnet_mask`, and `gateway` now display as dotted-decimal strings (e.g. `10.0.0.209`) instead of raw integers. `ip_method` shows `DHCP` or `Static`.
+- **feat:** New `sensor.alphaess_inverter_dispatch_countdown` counts down from the configured dispatch duration in real time.
+
 ### v1.9.5
 - **fix:** Battery Status sensor now displays as an integer instead of a float (e.g. `1` not `1.0`).
 - **fix:** Force Import Hold switch now displays the correct icon (`mdi:battery-lock`); the previously assigned `mdi:transmission-tower-lock` does not exist in the MDI icon set bundled with Home Assistant.
