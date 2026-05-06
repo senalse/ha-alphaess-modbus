@@ -82,6 +82,25 @@ def _fmt_ip(v: Any) -> str:
         return str(v)
 
 
+_BATTERY_STATUS_MAP: dict[int, str] = {
+    0: "Idle",
+    1: "Discharging",
+    256: "Charging",
+    257: "Charging + Discharging",
+    512: "Charging (mode 2)",
+    513: "Charging (mode 2) + Discharging",
+}
+
+
+def _fmt_battery_status(v: Any) -> str:
+    try:
+        n = int(v)
+        label = _BATTERY_STATUS_MAP.get(n, "Unknown")
+        return f"{label} ({n})"
+    except (TypeError, ValueError):
+        return str(v)
+
+
 _SENSOR_FORMATTERS: dict[str, Callable[[Any], Any]] = {
     "bms_version": _fmt_version,
     "lmu_version": _fmt_version,
@@ -89,6 +108,7 @@ _SENSOR_FORMATTERS: dict[str, Callable[[Any], Any]] = {
     "local_ip": _fmt_ip,
     "subnet_mask": _fmt_ip,
     "gateway": _fmt_ip,
+    "battery_status": _fmt_battery_status,
 }
 
 

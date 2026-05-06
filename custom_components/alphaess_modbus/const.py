@@ -379,7 +379,7 @@ SENSOR_REGISTERS: list[ModbusSensorDef] = [
                     0x011B, "int16", unit="%", device_class="battery",
                     scale=0.1, scan_interval=10),
     ModbusSensorDef("battery_status", "Battery Status",
-                    0x0103, "int16", precision=0, scan_interval=60),
+                    0x0103, "int16", state_class=None, scan_interval=60),
     ModbusSensorDef("battery_voltage", "Battery Voltage",
                     0x0100, "int16", unit="V", device_class="voltage",
                     scale=0.1, precision=2, scan_interval=60),
