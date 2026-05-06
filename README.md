@@ -428,6 +428,11 @@ Example Lovelace dashboard configurations are included in the [`examples/`](exam
 
 ## Changelog
 
+### v1.10.0-beta.6
+- **fix:** Excess Export Pause binary sensor was showing "Pause" instead of "Excess Export Pause" due to a stale entity registry name. Name is now set explicitly.
+- **fix:** Force Import Pause binary sensor was showing the full device-prefixed name "AlphaESS Inverter Force Import Pause" instead of just "Force Import Pause". Both pause sensors now follow the same naming convention.
+- **fix:** Dispatch Time sensor was displaying raw seconds with a thousands separator (e.g. "10,800 s" for 180 minutes). It now shows a human-readable duration string (e.g. "3h 00m", "30m").
+
 ### v1.10.0-beta.5
 - **feat:** Battery Status sensor now shows a human-readable label alongside the raw value, e.g. "Charging + Discharging (257)" instead of just "257".
 
