@@ -2,15 +2,22 @@ from __future__ import annotations
 
 import re
 
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import device_registry as dr
 
 from .config_flow import CONF_SLAVE_ID
 from .const import DOMAIN, PLATFORMS
 from .coordinator import AlphaESSCoordinator
 from .modbus_client import AlphaESSModbusClient
+
+SERVICE_WRITE_REGISTER = "write_register"
+SERVICE_WRITE_REGISTER_SCHEMA = vol.Schema({
+    vol.Required("address"): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+    vol.Required("value"): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+})
 
 _MODEL_PREFIXES: dict[str, str] = {
     "SMILE-T10": "SMILE-T10",
@@ -62,6 +69,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
+    if not hass.services.has_service(DOMAIN, SERVICE_WRITE_REGISTER):
+        async def _handle_write_register(call: ServiceCall) -> None:
+            address: int = call.data["address"]
+            value: int = call.data["value"]
+            for coordinator in hass.data[DOMAIN].values():
+                await coordinator.async_write_raw(address, value)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_WRITE_REGISTER,
+            _handle_write_register,
+            schema=SERVICE_WRITE_REGISTER_SCHEMA,
+        )
+
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
@@ -86,4 +107,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unloaded:
         coordinator: AlphaESSCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
         await coordinator.client.close()
+        if not hass.data[DOMAIN]:
+            hass.services.async_remove(DOMAIN, SERVICE_WRITE_REGISTER)
     return unloaded

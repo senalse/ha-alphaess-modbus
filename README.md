@@ -417,6 +417,25 @@ The inverter's Modbus TCP port is `502` and the slave ID is `85` by default. The
 
 ---
 
+## Advanced: Writing Registers Directly
+
+The `alphaess_modbus.write_register` service writes a raw integer value to any Modbus holding register using FC6 (Write Single Register). It is intended for use from Developer Tools or automations by advanced users and developers.
+
+> **Warning:** Writing incorrect values to grid safety registers (overvoltage, undervoltage, frequency protection) or inverter configuration registers can cause the inverter to trip or behave unexpectedly. Use with care and consult the AlphaESS Modbus register documentation before writing to any register you are not certain about. This service is for developers only.
+
+```yaml
+service: alphaess_modbus.write_register
+data:
+  address: 2052    # register address as a decimal integer (hex: 0x0804)
+  value: 400       # raw integer to write (no scale or offset applied)
+```
+
+The address must be provided as a decimal integer. Convert hex addresses from the register documentation using a calculator (for example, 0x0804 = 2052). The value is written as-is with no scale or offset applied.
+
+If two inverters are configured, the service writes the same value to all instances.
+
+---
+
 ## Dashboards
 
 Example Lovelace dashboard configurations are included in the [`examples/`](examples/) folder:

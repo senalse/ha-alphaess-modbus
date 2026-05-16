@@ -233,6 +233,10 @@ class AlphaESSCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_write_register(self, address: int, value: int) -> None:
         await self.client.write_register(address, value)
 
+    async def async_write_raw(self, address: int, value: int) -> None:
+        _LOGGER.debug("write_raw: address=%#06x value=%d", address, value)
+        await self.client.write_register(address, value)
+
     async def async_write_registers(self, address: int, values: list[int]) -> None:
         await self.client.write_registers(address, values)
 
