@@ -85,7 +85,9 @@ To run two AlphaESS inverters with the same Home Assistant instance:
 
 ## Poll Intervals
 
-Each sensor has a base poll interval. The coordinator runs a master loop (2 s by default); contiguous registers due in the same cycle are batched into a single Modbus read. Individual registers are skipped when their own `scan_interval` hasn't elapsed yet. Actual intervals scale with the Poll Mode option (see [Poll Speed](#poll-speed) below).
+Each sensor has a base poll interval. The coordinator runs a master loop (2 s by default); contiguous registers due in the same cycle are batched into a single Modbus read. Individual registers are skipped when their own `scan_interval` hasn't elapsed yet.
+
+The base intervals in the table below are the minimum achievable intervals. A register can only be read when the master loop fires, so in Normal mode (2 s loop) the effective floor is 2 s -- the 1 s entries are only read every 1 s when Fast mode is active. Actual intervals also scale with the Poll Mode multiplier (see [Poll Speed](#poll-speed) below).
 
 | Base Interval | Sensors |
 |---------------|---------|
@@ -93,8 +95,8 @@ Each sensor has a base poll interval. The coordinator runs a master loop (2 s by
 | **5 s** | Grid Power Phase A/B/C, Grid Voltage Phase A/B/C, Inverter Work Mode, Inverter Power L1/L2/L3 + total, System Fault, Inverter Warning 1/2, Inverter Fault 1/2, Battery Warning/Fault, Max Feed to Grid, Dispatch registers (including Dispatch Energy Flow Direction, Freq Dispatch Flag), dispatch PV switch, freq dispatch power/frequency *(last two disabled by default)* |
 | **10 s** | Battery SoC, Battery SoH, Battery min/max cell temps, Battery max charge/discharge current, Charging Time Period Control, Charging Cutoff SoC |
 | **30 s** | Grid Frequency, Charging/Discharging period start/stop times, Discharging Cutoff SoC |
-| **60 s** | Inverter Temperature, Battery Voltage/Current/Status/Remaining Time, Battery min/max cell voltages, Battery relay status *(disabled)*, PV String Voltage & Current, Energy Totals, Version strings, SOC Calibration Enable *(disabled)*, Network settings *(disabled)* |
-| **300 s** | Battery charge/discharge cutoff voltages, Battery module count, Battery capacity, Battery type, SOC calibration cycle days *(all disabled by default)* |
+| **60 s** | Inverter Temperature, Battery Voltage/Current/Status, Battery min/max cell voltages, Battery Remaining Time *(disabled)*, Battery relay status *(disabled)*, PV String Voltage & Current, Energy Totals, Version strings, Grid safety registers (OVP/UVP/OFP/UFP) *(disabled)*, Network settings *(disabled)* |
+| **300 s** | Battery charge/discharge cutoff voltages, Battery module count, Battery capacity, Battery type *(all disabled by default)* |
 
 ### Poll Speed
 
