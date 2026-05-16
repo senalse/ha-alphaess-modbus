@@ -5,18 +5,15 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from pymodbus.exceptions import ModbusException
 
-from .const import DOMAIN, SENSOR_REGISTERS, ModbusSensorDef
+from .const import DOMAIN, SENSOR_REGISTERS, ModbusSensorDef, B3_SCALE_OVERRIDES
 from .modbus_client import AlphaESSModbusClient
 
 _LOGGER = logging.getLogger(__name__)
-
-# Poll cycle — registers with scan_interval=1 are polled every 2 cycles at most;
-# the _is_due check still gates each individual register by its own scan_interval.
-COORDINATOR_INTERVAL = timedelta(seconds=2)
 
 # Fast SOC sampling rate (seconds) used while a SOC watcher is active.
 _SOC_FAST_INTERVAL = 2
@@ -89,13 +86,25 @@ def _decode_block(reg: ModbusSensorDef, raw: list[int], offset: int) -> Any:
 
 
 class AlphaESSCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    def __init__(self, hass: HomeAssistant, client: AlphaESSModbusClient) -> None:
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, client: AlphaESSModbusClient) -> None:
+        options = config_entry.options
+        poll_mode = options.get("poll_mode", "normal")
+        if poll_mode == "slow":
+            self._scan_multiplier: float = float(options.get("slow_multiplier", 3.0))
+            loop_interval = 2
+        elif poll_mode == "fast":
+            self._scan_multiplier = float(options.get("fast_multiplier", 0.5))
+            loop_interval = 1
+        else:
+            self._scan_multiplier = 1.0
+            loop_interval = 2
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=COORDINATOR_INTERVAL,
+            update_interval=timedelta(seconds=loop_interval),
         )
+        self._model_variant: str = options.get("model_variant", "standard")
         self.client = client
         self._last_polled: dict[str, float] = {}
         self._fast_soc_refcount: int = 0
@@ -108,6 +117,7 @@ class AlphaESSCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.fi_paused: bool = False
         self.dispatch_started_at: datetime | None = None
         self.dispatch_duration_s: int = 0
+        self.active_dispatch_key: str | None = None
 
     def get_number(self, key: str) -> float | None:
         return self.numbers.get(key)
@@ -128,11 +138,10 @@ class AlphaESSCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _is_due(self, reg: ModbusSensorDef) -> bool:
         last = self._last_polled.get(reg.key, 0.0)
-        interval = (
-            _SOC_FAST_INTERVAL
-            if reg.key == _SOC_BATTERY_KEY and self._fast_soc_refcount > 0
-            else reg.scan_interval
-        )
+        if reg.key == _SOC_BATTERY_KEY and self._fast_soc_refcount > 0:
+            interval: float = _SOC_FAST_INTERVAL
+        else:
+            interval = reg.scan_interval * self._scan_multiplier
         return (time.monotonic() - last) >= interval
 
     async def _async_update_data(self) -> dict[str, Any]:
@@ -159,7 +168,21 @@ class AlphaESSCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 for reg in g_regs:
                     offset = reg.address - g_start
                     try:
-                        data[reg.key] = _decode_block(reg, raw, offset)
+                        value = _decode_block(reg, raw, offset)
+                        if self._model_variant == "b3" and reg.key in B3_SCALE_OVERRIDES:
+                            v_raw = raw[offset]
+                            if reg.data_type == "int16" and v_raw > 32767:
+                                v_raw -= 65536
+                            elif reg.data_type == "int32":
+                                v_raw = (raw[offset] << 16) | raw[offset + 1]
+                                if v_raw > 2147483647:
+                                    v_raw -= 4294967296
+                            value = (v_raw + reg.offset) * B3_SCALE_OVERRIDES[reg.key]
+                            if reg.precision is not None:
+                                value = round(value, reg.precision)
+                                if reg.precision == 0:
+                                    value = int(value)
+                        data[reg.key] = value
                         self._last_polled[reg.key] = now
                     except Exception as decode_err:
                         errors.append(f"{reg.key}: decode error: {decode_err}")
@@ -224,6 +247,10 @@ class AlphaESSCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ])
 
     async def async_write_register(self, address: int, value: int) -> None:
+        await self.client.write_register(address, value)
+
+    async def async_write_raw(self, address: int, value: int) -> None:
+        _LOGGER.debug("write_raw: address=%#06x value=%d", address, value)
         await self.client.write_register(address, value)
 
     async def async_write_registers(self, address: int, values: list[int]) -> None:

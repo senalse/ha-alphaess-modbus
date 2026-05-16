@@ -1,0 +1,31 @@
+write_register:
+  name: Write Register
+  description: >
+    Write a raw integer value to a single Modbus holding register on the inverter
+    using FC6 (Write Single Register). No scale or offset is applied. For developers
+    and advanced users only.
+  fields:
+    address:
+      name: Address
+      description: >
+        Register address as a decimal integer (0 to 65535). Convert hex addresses
+        from the register documentation using a calculator, e.g. 0x0804 = 2052.
+      required: true
+      example: 2052
+      selector:
+        number:
+          min: 0
+          max: 65535
+          mode: box
+    value:
+      name: Value
+      description: >
+        Raw integer to write (0 to 65535). No scale or offset is applied; provide
+        the exact register value as documented.
+      required: true
+      example: 400
+      selector:
+        number:
+          min: 0
+          max: 65535
+          mode: box

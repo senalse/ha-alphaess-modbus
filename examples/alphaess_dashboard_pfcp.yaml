@@ -162,9 +162,11 @@ sections:
         entities:
           - entity: switch.alphaess_inverter_force_export
             name: Enable
+          - entity: switch.alphaess_inverter_force_export_hold
+            name: Hold After Duration
           - type: section
           - entity: number.alphaess_inverter_force_export_power
-            name: Power (kW)
+            name: Target Export (kW)
           - entity: number.alphaess_inverter_force_export_duration
             name: Duration (min)
           - entity: number.alphaess_inverter_force_export_cutoff_soc
@@ -197,18 +199,6 @@ sections:
           - type: section
           - entity: select.alphaess_inverter_inverter_ac_limit
             name: Inverter AC Limit
-
-      - type: entities
-        title: Smart Export
-        show_header_toggle: false
-        entities:
-          - entity: switch.alphaess_inverter_smart_export
-            name: Enable
-          - type: section
-          - entity: number.alphaess_inverter_max_export_power
-            name: Max Export (kW)
-          - entity: number.alphaess_inverter_force_export_cutoff_soc
-            name: SoC Floor (%)
 
       - type: entities
         title: Force Import
@@ -321,6 +311,14 @@ sections:
             name: Time Remaining
           - entity: sensor.alphaess_inverter_dispatch_countdown
             name: Countdown
+          - entity: sensor.alphaess_inverter_force_charging_countdown
+            name: Force Charging Countdown
+          - entity: sensor.alphaess_inverter_force_discharging_countdown
+            name: Force Discharging Countdown
+          - entity: sensor.alphaess_inverter_force_export_countdown
+            name: Force Export Countdown
+          - entity: sensor.alphaess_inverter_force_import_countdown
+            name: Force Import Countdown
           - entity: sensor.alphaess_inverter_dispatch_energy_flow_direction
             name: Energy Flow Direction
           - entity: sensor.alphaess_inverter_freq_dispatch_flag

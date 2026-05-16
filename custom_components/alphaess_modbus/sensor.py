@@ -139,6 +139,15 @@ async def async_setup_entry(
     ]
     entities.append(AlphaESSEmsVersionSensor(coordinator, entry))
     entities.append(AlphaESSDispatchCountdownSensor(coordinator, entry))
+    entities += [
+        AlphaESSModeCountdownSensor(coordinator, entry, switch_key, name, icon)
+        for switch_key, name, icon in [
+            ("force_charging",    "Force Charging Countdown",    "mdi:battery-charging"),
+            ("force_discharging", "Force Discharging Countdown", "mdi:battery-arrow-down"),
+            ("force_export",      "Force Export Countdown",      "mdi:transmission-tower-export"),
+            ("force_import",      "Force Import Countdown",      "mdi:transmission-tower-import"),
+        ]
+    ]
     async_add_entities(entities)
 
 
@@ -323,3 +332,37 @@ class AlphaESSDispatchCountdownSensor(CoordinatorEntity[AlphaESSCoordinator], Se
         elapsed = (datetime.now(timezone.utc) - started).total_seconds()
         remaining = max(0, int(dur - elapsed))
         return remaining
+
+
+class AlphaESSModeCountdownSensor(CoordinatorEntity[AlphaESSCoordinator], SensorEntity):
+    """Countdown sensor for a specific dispatch mode (force charging/discharging/export/import).
+
+    Shows the live dispatch_time register value when that mode is active, zero otherwise.
+    """
+    _attr_has_entity_name = True
+    _attr_native_unit_of_measurement = "s"
+    _attr_device_class = None
+    _attr_state_class = None
+
+    def __init__(
+        self,
+        coordinator: AlphaESSCoordinator,
+        entry: ConfigEntry,
+        switch_key: str,
+        name: str,
+        icon: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self._switch_key = switch_key
+        self._attr_name = name
+        self._attr_unique_id = f"{entry.entry_id}_{switch_key}_countdown"
+        self._attr_translation_key = f"{switch_key}_countdown"
+        self._attr_icon = icon
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
+
+    @property
+    def native_value(self) -> int:
+        if self.coordinator.active_dispatch_key != self._switch_key:
+            return 0
+        dispatch_time = (self.coordinator.data or {}).get("dispatch_time", 0)
+        return int(dispatch_time)

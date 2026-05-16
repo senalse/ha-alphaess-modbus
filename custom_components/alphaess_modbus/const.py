@@ -582,11 +582,6 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
                     address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
                     icon="mdi:flash", ac_limit_scaled=True),
-    ModbusNumberDef("max_export_power", "Max Export Power",
-                    address=None,
-                    min_value=0, max_value=20, step=0.1, unit="kW",
-                    icon="mdi:transmission-tower-export", ac_limit_scaled=True),
-
     # Charging/discharging period times are handled by the time platform (time.py)
     # using ModbusTimeDef entries in TIME_REGISTERS below.
 ]
@@ -653,6 +648,41 @@ TIME_REGISTERS: list[ModbusTimeDef] = [
     ModbusTimeDef("discharging_period_2_start", "Discharging Period 2 Start Time", 0x0853, 0x085C, "mdi:clock-start"),
     ModbusTimeDef("discharging_period_2_stop",  "Discharging Period 2 Stop Time",  0x0854, 0x085D, "mdi:clock-end"),
 ]
+
+# ---------------------------------------------------------------------------
+# B3 / B3PLUS model scale overrides
+# Source: integration_alpha_ess.yaml v10.5 (comments "X for SMILE-B3/SMILE-B3-PLUS")
+# B3 and B3PLUS share identical scales, so a single "b3" variant covers both.
+#
+# | key                    | std scale | B3 scale |
+# |------------------------|-----------|----------|
+# | inverter_temperature   |   0.1     |   0.01   |
+# | voltage_phase_a_grid   |   1.0     |   0.1    |
+# | voltage_phase_b_grid   |   1.0     |   0.1    |
+# | voltage_phase_c_grid   |   1.0     |   0.1    |
+# | power_inverter_l1      |   1.0     |   0.1    |
+# | power_inverter_l2      |   1.0     |   0.1    |
+# | power_inverter_l3      |   1.0     |   0.1    |
+# | power_inverter         |   1.0     |   0.1    |
+# | backup_power_inverter_l1|  1.0     |   0.1    |
+# | backup_power_inverter_l2|  1.0     |   0.1    |
+# | backup_power_inverter_l3|  1.0     |   0.1    |
+# | backup_power_inverter  |   1.0     |   0.1    |
+# ---------------------------------------------------------------------------
+B3_SCALE_OVERRIDES: dict[str, float] = {
+    "inverter_temperature":    0.01,
+    "voltage_phase_a_grid":    0.1,
+    "voltage_phase_b_grid":    0.1,
+    "voltage_phase_c_grid":    0.1,
+    "power_inverter_l1":       0.1,
+    "power_inverter_l2":       0.1,
+    "power_inverter_l3":       0.1,
+    "power_inverter":          0.1,
+    "backup_power_inverter_l1": 0.1,
+    "backup_power_inverter_l2": 0.1,
+    "backup_power_inverter_l3": 0.1,
+    "backup_power_inverter":   0.1,
+}
 
 # ---------------------------------------------------------------------------
 # Dispatch register base address (used in switch/button write sequences)
