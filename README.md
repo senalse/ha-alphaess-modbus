@@ -490,7 +490,7 @@ Example Lovelace dashboard configurations are included in the [`examples/`](exam
 
 ## Changelog
 
-### v1.11.0
+### v1.11.0-beta.1
 - **fix:** Force Export now dynamically calculates battery discharge power from live house load and PV production so the grid sees the configured feed-in rate. Previously it sent the target directly as battery discharge power, ignoring house load and PV entirely.
 - **feat:** Force Export Hold added. Enabling it before starting Force Export keeps the dynamic export running indefinitely after the duration expires, matching the behaviour of Force Charging Hold and Force Import Hold.
 - **feat:** Smart Export removed. It provided the same dynamic continuous export that Force Export Hold now covers. Users who relied on Smart Export should switch to Force Export with Force Export Hold enabled.
