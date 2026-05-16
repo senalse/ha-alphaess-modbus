@@ -311,6 +311,14 @@ sections:
             name: Time Remaining
           - entity: sensor.alphaess_inverter_dispatch_countdown
             name: Countdown
+          - entity: sensor.alphaess_inverter_force_charging_countdown
+            name: Force Charging Countdown
+          - entity: sensor.alphaess_inverter_force_discharging_countdown
+            name: Force Discharging Countdown
+          - entity: sensor.alphaess_inverter_force_export_countdown
+            name: Force Export Countdown
+          - entity: sensor.alphaess_inverter_force_import_countdown
+            name: Force Import Countdown
           - entity: sensor.alphaess_inverter_dispatch_energy_flow_direction
             name: Energy Flow Direction
           - entity: sensor.alphaess_inverter_freq_dispatch_flag

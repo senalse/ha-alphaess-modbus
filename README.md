@@ -261,6 +261,10 @@ B3 and B3PLUS inverters report some registers with different scale factors. Sele
 | Dispatch PV Switch | - | 5 s | PV switch state during dispatch |
 | Freq Dispatch Power *(disabled)* | W | 5 s | Frequency dispatch power setpoint |
 | Freq Dispatch Frequency *(disabled)* | Hz | 5 s | Frequency dispatch trigger frequency |
+| Force Charging Countdown | s | 5 s | Live inverter remaining time when Force Charging is active; 0 otherwise |
+| Force Discharging Countdown | s | 5 s | Live inverter remaining time when Force Discharging is active; 0 otherwise |
+| Force Export Countdown | s | 5 s | Live inverter remaining time when Force Export is active; 0 otherwise |
+| Force Import Countdown | s | 5 s | Live inverter remaining time when Force Import is active; 0 otherwise |
 
 #### Scheduling — Charging / Discharging Periods
 
@@ -395,6 +399,16 @@ These are read-only sensor views of the scheduling registers. The writable equiv
 | Restart PCS | Button | Restart the Power Conversion System |
 | Restart EMS | Button | Restart the Energy Management System |
 | Reset Energy Totals | Button | **WARNING: clears all lifetime energy counters on the inverter.** Use only if you have intentionally replaced the inverter or need to zero out the totals. |
+
+#### Extending a Running Dispatch Duration
+
+To extend the duration of an active Force Charging, Force Discharging, Force Export, or Force Import session without interruption:
+
+1. Set the Duration number entity to the new total time you want (e.g. 120 min).
+2. Turn the switch off.
+3. Turn the switch on again.
+
+The integration immediately sends a fresh dispatch with the new duration. The per-mode countdown sensor reflects the new duration within the next 5 s poll.
 
 ---
 

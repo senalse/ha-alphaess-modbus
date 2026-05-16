@@ -140,6 +140,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                 await sw._async_turn_off_silent()
 
         self._is_on = True
+        self._coordinator.active_dispatch_key = self.switch_key
         self.async_write_ha_state()
 
         try:
@@ -186,6 +187,8 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
 
     async def _async_turn_off_silent(self) -> None:
         self._is_on = False
+        if self._coordinator.active_dispatch_key == self.switch_key:
+            self._coordinator.active_dispatch_key = None
         self._cancel_timer()
         self.async_write_ha_state()
         if self.switch_key in _HOLD_SWITCHES:
@@ -283,6 +286,8 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         triggering a full dispatch reset (which is the caller's responsibility).
         """
         self._is_on = False
+        if self._coordinator.active_dispatch_key == self.switch_key:
+            self._coordinator.active_dispatch_key = None
         self._cancel_timer()
         self.async_write_ha_state()
 

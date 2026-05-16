@@ -117,6 +117,7 @@ class AlphaESSCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.fi_paused: bool = False
         self.dispatch_started_at: datetime | None = None
         self.dispatch_duration_s: int = 0
+        self.active_dispatch_key: str | None = None
 
     def get_number(self, key: str) -> float | None:
         return self.numbers.get(key)
