@@ -22,17 +22,17 @@
     "step": {
       "init": {
         "title": "Poll Speed",
-        "description": "Adjust how frequently the integration polls the inverter. Slow mode reduces transaction rate for RS485 adapters prone to timeouts. Fast mode shortens scan intervals and sets the coordinator loop to match the multiplier value.",
+        "description": "Adjust how frequently the integration polls the inverter. Slow mode reduces transaction rate for RS485 adapters prone to timeouts. Fast mode sets the coordinator loop interval directly in seconds and scales all sensor poll intervals by the same value.",
         "data": {
           "poll_mode": "Poll Mode",
           "slow_multiplier": "Slow Mode Interval Multiplier",
-          "fast_multiplier": "Fast Mode Interval Multiplier",
+          "fast_multiplier": "Fast Mode Poll Interval (s)",
           "model_variant": "Inverter Model Variant"
         },
         "data_description": {
-          "poll_mode": "Slow (3x longer), Normal (default), or Fast. In Fast mode the coordinator loop interval equals the multiplier value, so a 0.1 multiplier gives a 0.1 s loop.",
+          "poll_mode": "Slow (3x longer), Normal (default), or Fast. In Fast mode the loop runs at the poll interval value directly, so 0.1 gives a 100 ms loop and 10 polls per second for 1 s sensors.",
           "slow_multiplier": "Multiplier applied to all scan intervals in Slow mode (default 3.0, range 0.25-10.0).",
-          "fast_multiplier": "Multiplier applied to all scan intervals in Fast mode (default 0.5, range 0.1-10.0). The coordinator loop interval is set to this value, so 0.1 polls up to 10 times per second. Values below 0.25 are only recommended for direct Modbus TCP connections - RS485 adapters are unlikely to keep up and may cause timeouts.",
+          "fast_multiplier": "Sets the coordinator loop interval in seconds and scales all sensor poll intervals by the same factor. At 0.1, the loop runs every 100 ms and 1 s sensors poll 10 times per second. Values below 0.25 are only recommended for direct Modbus TCP connections - RS485 adapters are unlikely to keep up and may cause timeouts.",
           "model_variant": "Select Standard for most inverters. Select SMILE-B3 / SMILE-B3-PLUS if your inverter is a SMILE-B3 or SMILE-B3-PLUS - these models use different scale factors for voltage and inverter power registers."
         }
       }
