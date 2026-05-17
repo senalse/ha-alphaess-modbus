@@ -10,6 +10,13 @@ No cloud account required. All communication is direct to the inverter on your l
 
 Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewlodge.ie/alphaess/).
 
+> **Disclaimer**
+> This is an unofficial community integration, not affiliated with or supported by AlphaESS.
+> The integration can write values directly to your inverter's Modbus registers. Incorrect
+> values -- wrong power levels, bad SoC limits, or invalid dispatch parameters -- can
+> damage your battery or cause unexpected inverter behaviour. Use this integration at your
+> own risk. The author accepts no responsibility for damage to hardware or loss of data.
+
 ---
 
 ## Features
