@@ -103,6 +103,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._ee_last_pause_time: float = 0.0
         self._ee_last_resume_time: float = 0.0
         self._ee_work_mode_1_since: float | None = None
+        self._ee_above_limit: bool | None = None
 
     async def async_added_to_hass(self) -> None:
         state = await self.async_get_last_state()
@@ -213,6 +214,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         if self._ee_listener_unsub:
             self._ee_listener_unsub()
             self._ee_listener_unsub = None
+        self._ee_above_limit = None
 
     def _cancel_refresh_timer(self) -> None:
         if self._timer_cancel:
@@ -552,8 +554,20 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
     # ------------------------------------------------------------------
 
     async def _start_excess_export(self) -> None:
+        if not self._is_on:
+            return
+        d = self._coordinator.data or {}
+        pv_total = _calc_pv_production(d)
+        if pv_total is not None:
+            pv_dc = pv_total - int(d.get("active_power_pv_meter", 0))
+            if pv_dc > self._coordinator.ac_limit_w:
+                power_raw = max(0, 32000 - (pv_dc - self._coordinator.ac_limit_w))
+            else:
+                power_raw = 32000
+        else:
+            power_raw = 32000
         await self._coordinator.async_write_dispatch([
-            1, 0, 32000, 0, 32000,
+            1, 0, power_raw, 0, 32000,
             DISPATCH_MODE_SOC_CONTROL, 255, 0, 300,
         ])
         self._schedule_excess_export_refresh()
@@ -599,6 +613,11 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         else:
             self._ee_work_mode_1_since = None
 
+        pv_total_init = _calc_pv_production(d)
+        if pv_total_init is not None:
+            pv_dc_init = pv_total_init - int(d.get("active_power_pv_meter", 0))
+            self._ee_above_limit = pv_dc_init > self._coordinator.ac_limit_w
+
         def _check() -> None:
             if not self._is_on:
                 return
@@ -617,18 +636,34 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                 self._ee_work_mode_1_since = None
 
             if not self._coordinator.ee_paused:
-                should_pause = float(grid) > 50 or not work_mode_normal
-                if should_pause and (now - self._ee_last_resume_time) >= 15:
+                should_pause_grid = float(grid) > 50 and (now - self._ee_last_resume_time) >= 15
+                should_pause_mode = not work_mode_normal
+                if should_pause_grid or should_pause_mode:
                     self._coordinator.ee_paused = True
                     self._ee_last_pause_time = now
+                    self._ee_above_limit = None
                     task = self.hass.async_create_task(
                         self._coordinator.async_reset_dispatch(),
                         name="alphaess_ee_auto_pause",
                     )
                     self._pending_tasks.add(task)
                     task.add_done_callback(self._pending_tasks.discard)
+                else:
+                    pv_total = _calc_pv_production(d)
+                    if pv_total is not None:
+                        pv_dc = pv_total - int(d.get("active_power_pv_meter", 0))
+                        above = pv_dc > self._coordinator.ac_limit_w
+                        if above != self._ee_above_limit:
+                            self._ee_above_limit = above
+                            task = self.hass.async_create_task(
+                                self._start_excess_export(),
+                                name="alphaess_ee_regime_change",
+                            )
+                            self._pending_tasks.add(task)
+                            task.add_done_callback(self._pending_tasks.discard)
             else:
-                pv = _calc_pv_production(d) or 0
+                pv_total = _calc_pv_production(d)
+                pv = pv_total or 0
                 hl = _calc_house_load(d) or 0
                 excess = max(0, pv - hl)
                 work_mode_ok = (
@@ -644,6 +679,11 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                 ):
                     self._coordinator.ee_paused = False
                     self._ee_last_resume_time = now
+                    if pv_total is not None:
+                        pv_dc = pv_total - int(d.get("active_power_pv_meter", 0))
+                        self._ee_above_limit = pv_dc > self._coordinator.ac_limit_w
+                    else:
+                        self._ee_above_limit = None
                     task = self.hass.async_create_task(
                         self._start_excess_export(),
                         name="alphaess_ee_auto_resume",

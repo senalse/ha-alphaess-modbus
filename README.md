@@ -27,7 +27,7 @@ Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewl
 - **Force Export** — export to grid at a target feed-in rate (kW); battery discharge is dynamically adjusted for live house load and PV so the grid sees the configured power; stops automatically when the duration expires or battery reaches the cutoff SoC
 - **Force Export Hold** — keeps Force Export running indefinitely after the duration expires; turn on before starting Force Export for continuous export without a time limit
 - **Force Import** — import from grid at a configurable target kW, dynamically adjusting battery charge to offset live PV so total grid draw stays at the target; stops at cutoff SoC
-- **Excess Export** — prioritise grid export over battery charging to reduce PV clipping; automatically pauses when the house starts drawing from the grid and resumes once PV recovers
+- **Excess Export** — charge the battery with PV power that would otherwise be clipped by the inverter AC output limit; automatically pauses when the house starts drawing from the grid and resumes once PV recovers
 - **Battery cell health** — min/max cell voltages polled every 60 s; charge/discharge cutoff voltages, module count, capacity, and type available as diagnostic sensors
 - **Dispatch diagnostics** — energy flow direction (human-readable), PV switch state, frequency dispatch flag, power, and frequency
 - **Charging / Discharging time periods** — configure up to two charge and discharge windows
@@ -375,7 +375,7 @@ These are read-only sensor views of the scheduling registers. The writable equiv
 | Force Import | Switch | Import from grid at a target kW, dynamically adjusted for live PV so total grid draw stays at the target; stops at cutoff SoC |
 | Force Import Pause | Binary sensor | On when Force Import is automatically paused; resumes automatically when conditions are met |
 | Dispatch | Switch | Generic dispatch — mode, power, SoC target, and duration all configurable independently |
-| Excess Export | Switch | Maximise PV export, reduce clipping; auto-pauses when house draws from grid, auto-resumes when PV recovers |
+| Excess Export | Switch | Charge battery with PV power that would otherwise be clipped by the AC output limit; auto-pauses when house draws from grid, auto-resumes when PV recovers |
 | Excess Export Pause | Binary sensor | On when Excess Export has automatically paused due to grid import |
 | Force Charging Power | Number | Charging power in kW (0–20) |
 | Force Charging Duration | Number | Duration in minutes (0–480, step 5) |
