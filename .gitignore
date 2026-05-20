@@ -9,6 +9,12 @@ integration_alpha_ess.yaml
 # Local reference docs (manufacturer PDFs, datasheets, etc.)
 docs/
 
+# Tests (local only, not published to HACS/GitHub)
+tests/
+pytest.ini
+requirements-test.txt
+.pytest_cache/
+
 # Python
 __pycache__/
 *.pyc
