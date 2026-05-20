@@ -1,5 +1,9 @@
 # Changelog
 
+### v1.11.0-beta.5
+- **fix:** Force Discharging and Force Export no longer schedule an orphan duration timer when SoC is already at or below the cutoff at startup. The orphan timer would call async_reset_dispatch hours later and could cancel an unrelated active dispatch.
+- **fix:** Dispatch countdown entity ID corrected in the dashboard example.
+
 ### v1.11.0-beta.4
 - **fix:** Excess Export now recalculates battery charge power on every coordinator update (every 2 s) and rewrites the dispatch registers when power changes by 50 W or more, matching the cadence of the upstream automation. Previously power was only recalculated at the 4-minute refresh or when PV crossed the AC limit threshold.
 - **fix:** All four Force modes (Charging, Discharging, Export, Import) now stop automatically when battery power stays within +-50 W for 10 consecutive seconds. This replaces the SoC+1% fudge-factor approach and uses the inverter's natural signal that it has reached its SoC target. Force Charging and Force Import previously had no early-stop watcher at all.
