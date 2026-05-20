@@ -14,8 +14,8 @@ Register labels are sourced at runtime from `custom_components/alphaess_modbus/c
 so the output stays in sync with the integration without any manual upkeep.
 
 ```
-python tools/scan_registers.py --host 10.0.0.209 --slave 85
-python tools/scan_registers.py --host 10.0.0.209 --chunk 8
+python tools/scan_registers.py --host 192.168.1.100
+python tools/scan_registers.py --host 192.168.1.100 --slave 85 --chunk 8
 ```
 
 Output: `scan_results.csv` in the current directory.
@@ -28,6 +28,6 @@ Runs three quick Modbus read tests (connect, battery registers, wrong slave ID)
 to verify the inverter is reachable and responding correctly.
 
 ```
-python tools/test_connection.py --host 10.0.0.209
-python tools/test_connection.py --host 10.0.0.209 --port 502 --slave 85
+python tools/test_connection.py --host 192.168.1.100
+python tools/test_connection.py --host 192.168.1.100 --port 502 --slave 85
 ```

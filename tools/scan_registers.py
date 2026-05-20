@@ -10,8 +10,8 @@ Stop the Home Assistant integration (or disable the integration) before
 running this, otherwise reads will fail.
 
 Usage:
-    python tools/scan_registers.py
-    python tools/scan_registers.py --host 10.0.0.209 --slave 85 --chunk 16
+    python tools/scan_registers.py --host 192.168.1.100
+    python tools/scan_registers.py --host 192.168.1.100 --slave 85 --chunk 16
 """
 
 import argparse
@@ -27,7 +27,6 @@ from custom_components.alphaess_modbus.const import SENSOR_REGISTERS  # noqa: E4
 
 from pymodbus.client import AsyncModbusTcpClient
 
-HOST    = "10.0.0.209"
 PORT    = 502
 SLAVE   = 85
 TIMEOUT = 5
@@ -175,7 +174,7 @@ async def main(args: argparse.Namespace) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AlphaESS Modbus register scanner")
-    parser.add_argument("--host",  default=HOST,  help=f"Inverter IP (default: {HOST})")
+    parser.add_argument("--host",  required=True, help="Inverter IP address")
     parser.add_argument("--port",  default=PORT,  type=int)
     parser.add_argument("--slave", default=SLAVE, type=int)
     parser.add_argument("--chunk", default=CHUNK, type=int,

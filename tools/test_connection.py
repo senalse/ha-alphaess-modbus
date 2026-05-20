@@ -2,8 +2,8 @@
 Diagnostic script: mirrors exactly what the HA integration does.
 
 Usage:
-    python tools/test_connection.py --host 10.0.0.209
-    python tools/test_connection.py --host 10.0.0.209 --port 502 --slave 85
+    python tools/test_connection.py --host 192.168.1.100
+    python tools/test_connection.py --host 192.168.1.100 --port 502 --slave 85
 """
 import argparse
 import asyncio
@@ -11,7 +11,6 @@ import traceback
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
-DEFAULT_HOST  = "10.0.0.209"
 DEFAULT_PORT  = 502
 DEFAULT_SLAVE = 85
 
@@ -86,7 +85,7 @@ async def test_no_slave(host: str, port: int) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="AlphaESS Modbus connection diagnostic")
-    parser.add_argument("--host",  default=DEFAULT_HOST,  help=f"Inverter IP (default: {DEFAULT_HOST})")
+    parser.add_argument("--host",  required=True, help="Inverter IP address")
     parser.add_argument("--port",  default=DEFAULT_PORT,  type=int)
     parser.add_argument("--slave", default=DEFAULT_SLAVE, type=int)
     args = parser.parse_args()
