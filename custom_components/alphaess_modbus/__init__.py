@@ -73,8 +73,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async def _handle_write_register(call: ServiceCall) -> None:
             address: int = call.data["address"]
             value: int = call.data["value"]
-            for coordinator in hass.data[DOMAIN].values():
-                await coordinator.async_write_raw(address, value)
+            # hass.data[DOMAIN] also holds non-coordinator entries (e.g. the
+            # per-entry switches map), so only call coordinators.
+            for obj in hass.data[DOMAIN].values():
+                if isinstance(obj, AlphaESSCoordinator):
+                    await obj.async_write_raw(address, value)
 
         hass.services.async_register(
             DOMAIN,
@@ -106,7 +109,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         coordinator: AlphaESSCoordinator = hass.data[DOMAIN].pop(entry.entry_id)
+        hass.data[DOMAIN].pop(f"{entry.entry_id}_switches", None)
         await coordinator.client.close()
-        if not hass.data[DOMAIN]:
+        if not any(isinstance(o, AlphaESSCoordinator) for o in hass.data[DOMAIN].values()):
             hass.services.async_remove(DOMAIN, SERVICE_WRITE_REGISTER)
     return unloaded
