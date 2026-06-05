@@ -1,5 +1,26 @@
 # Changelog
 
+### v1.13.0
+
+#### What's new
+
+- Dispatch PV Enabled switch added. Controls the inverter's PV coupling during an active dispatch via register 0x088A, so PV can be enabled or disabled mid-dispatch (useful for shedding solar during negative-price periods). Defaults to on (PV enabled). Toggling it while a dispatch is running applies immediately; otherwise it takes effect on the next dispatch.
+- All dispatch writes now include the flow-direction and PV-switch registers, extending the dispatch block from 9 to 11 registers (0x0880 to 0x088A). Confirmed on hardware: the PV switch only takes effect during an active dispatch, and the inverter restores PV to normal when the dispatch ends.
+
+#### Bug fixes
+
+- The Dispatch PV Enabled switch and the dispatch countdown now resolve correctly in the example dashboards; their entity IDs were wrong, which showed "Entity not found" on the Dispatch card.
+- The write_register service no longer returns an error caused by internal data that is not a coordinator.
+- The IP Method diagnostic sensor no longer errors when enabled. It reports a text value (DHCP or Static) but was classed as a numeric measurement, which Home Assistant rejects. It is disabled by default, so this only affected users who had enabled it.
+- The Force Discharging Hold switch now has its own translation entry, matching the other Hold switches.
+- Several integer diagnostic sensors (system time fields, Modbus baud rate, grid regulation) now display as whole numbers instead of decimals. All are disabled by default.
+
+#### Upgrading from v1.12.0
+
+- No entities are renamed or removed, so existing dashboards and automations are unaffected. The only new entity is the Dispatch PV Enabled switch, which defaults to on (PV stays enabled). Because the generic Dispatch now also sets the PV register, please report any unexpected PV behaviour during a dispatch.
+
+---
+
 ### v1.13.0-beta.3
 - **fix:** The IP Method diagnostic sensor no longer errors when enabled. It reports a text value (DHCP or Static) but was classed as a numeric measurement, which Home Assistant rejects. The sensor is disabled by default, so this only affects users who enabled it.
 
