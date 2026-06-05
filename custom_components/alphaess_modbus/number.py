@@ -28,7 +28,6 @@ DISPATCH_PARAM_KEYS = {
     "dispatch_cutoff_soc",
     "dispatch_duration",
     "dispatch_power",
-    "max_export_power",
 }
 
 # Maps param key prefix (or exact key) to the switch that owns it
@@ -38,7 +37,6 @@ _PARAM_SWITCH = {
     "force_export": "force_export",
     "force_import": "force_import",
     "dispatch": "dispatch",
-    "max_export_power": "smart_export",
 }
 
 
