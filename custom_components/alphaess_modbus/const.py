@@ -154,24 +154,24 @@ SENSOR_REGISTERS: list[ModbusSensorDef] = [
 
     # --- System time ---
     ModbusSensorDef("system_time_yymm", "System Time YYMM",
-                    0x0740, "int16", scan_interval=5,
+                    0x0740, "int16", precision=0, scan_interval=5,
                     enabled_by_default=False,
                     description="Inverter clock - year and month packed as YYMM integer",
                     group="System Time"),
     ModbusSensorDef("system_time_ddhh", "System Time DDHH",
-                    0x0741, "int16", scan_interval=5,
+                    0x0741, "int16", precision=0, scan_interval=5,
                     enabled_by_default=False,
                     description="Inverter clock - day and hour packed as DDHH integer",
                     group="System Time"),
     ModbusSensorDef("system_time_mmss", "System Time MMSS",
-                    0x0742, "int16", scan_interval=5,
+                    0x0742, "int16", precision=0, scan_interval=5,
                     enabled_by_default=False,
                     description="Inverter clock - minute and second packed as MMSS integer",
                     group="System Time"),
 
     # --- Network ---
     ModbusSensorDef("modbus_baud_rate", "Modbus Baud Rate",
-                    0x0810, "uint16", scan_interval=60,
+                    0x0810, "uint16", precision=0, scan_interval=60,
                     enabled_by_default=False,
                     description="Modbus RS-485 baud rate",
                     group="Network"),
@@ -471,7 +471,7 @@ SENSOR_REGISTERS: list[ModbusSensorDef] = [
 
     # --- Grid safety ---
     ModbusSensorDef("grid_regulation", "Grid Regulation",
-                    0x1000, "int16", scan_interval=60, enabled_by_default=False,
+                    0x1000, "int16", precision=0, scan_interval=60, enabled_by_default=False,
                     description="Active grid compliance standard or regulation profile",
                     group="Grid Safety"),
     ModbusSensorDef("ovp_l1", "Overvoltage Protection L1",
