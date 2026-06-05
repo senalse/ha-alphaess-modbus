@@ -15,6 +15,13 @@ pytest.ini
 requirements-test.txt
 .pytest_cache/
 
+# Local scratch / dev scripts (not part of the integration)
+# Anchored to repo root so the maintained tools/ copies stay tracked.
+/scan_registers.py
+/test_connection.py
+/alphaess_modbus_logo.png
+tools/verify_beta4.py
+
 # Python
 __pycache__/
 *.pyc
