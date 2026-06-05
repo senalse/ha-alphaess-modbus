@@ -1,5 +1,11 @@
 # Changelog
 
+### v1.13.1-beta.1
+- **fix:** Force Export and Force Import now adjust the battery dispatch as soon as house load or solar changes, instead of waiting for a fixed 25-second cycle. At low export power settings a sudden load such as a kettle could previously pull power from the grid for up to 25 seconds before the next adjustment; it is now corrected within about a poll cycle (a couple of seconds), which matters for zero-import export tariffs.
+- **upgrading from v1.13.0:** No entities are renamed or removed, so dashboards and automations are unaffected. There are no new settings. Force Export and Force Import simply react faster to load and solar changes.
+
+---
+
 ### v1.13.0
 
 #### What's new
