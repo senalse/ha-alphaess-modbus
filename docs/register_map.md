@@ -53,7 +53,7 @@ Sensors are polled at the interval shown. Entries marked **off** in the Default 
 | Address | Key | Name | Description | Unit | Type | Scale/Offset | Poll | Default |
 |---------|-----|------|-------------|------|------|--------------|------|---------|
 | 0x0810 | `modbus_baud_rate` | Modbus Baud Rate | Modbus RS-485 baud rate | - | uint16 | - | 60 s | off |
-| 0x0808 | `ip_method` | IP Method | IP address assignment method (0 = static, 1 = DHCP) | - | uint16 | - | 60 s | off |
+| 0x0808 | `ip_method` | IP Method | IP address assignment method | - | uint16 | - | 60 s | off |
 | 0x0809 | `local_ip` | Local IP | Inverter local IP address as a packed 32-bit integer | - | uint32 | - | 60 s | off |
 | 0x080B | `subnet_mask` | Subnet Mask | Inverter subnet mask as a packed 32-bit integer | - | uint32 | - | 60 s | off |
 | 0x080D | `gateway` | Gateway | Inverter default gateway as a packed 32-bit integer | - | uint32 | - | 60 s | off |
