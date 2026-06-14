@@ -559,12 +559,15 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             soc = d.get("soc_battery")
             cutoff_soc = self._num("force_export_cutoff_soc", 4.0)
             if soc is not None and float(soc) <= cutoff_soc:
-                task = self.hass.async_create_task(
-                    self._async_turn_off_silent(),
-                    name=f"alphaess_{self.switch_key}_soc_off",
-                )
-                self._pending_tasks.add(task)
-                task.add_done_callback(self._pending_tasks.discard)
+                switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+                hold_sw = switches.get("force_export_hold")
+                if not (hold_sw and hold_sw.is_on):
+                    task = self.hass.async_create_task(
+                        self._async_turn_off_silent(),
+                        name=f"alphaess_{self.switch_key}_soc_off",
+                    )
+                    self._pending_tasks.add(task)
+                    task.add_done_callback(self._pending_tasks.discard)
                 return
             grid = d.get("power_grid")
             if grid is None:
