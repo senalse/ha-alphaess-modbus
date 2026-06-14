@@ -217,7 +217,6 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                 if not self._is_on:
                     return
                 self._schedule_duration_off(duration_s)
-                self._start_battery_power_watcher("force_export_hold")
             elif self.switch_key == "force_import":
                 duration_min = self._num("force_import_duration", 120.0)
                 duration_s = int(duration_min * 60)
