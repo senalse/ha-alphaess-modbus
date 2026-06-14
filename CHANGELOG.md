@@ -1,5 +1,17 @@
 # Changelog
 
+### v1.15.0-beta.3
+
+#### Bug fixes
+
+- fix: Force Export Hold now correctly prevents auto-off at the SoC cutoff again. The previous fix removed the battery power watcher (which caused false auto-offs when battery was legitimately idle) but inadvertently also removed the Hold gate. Hold now gates the SoC cutoff check in the servo watcher directly.
+
+#### Upgrading from v1.15.0-beta.2
+
+- No entity or setting changes. Force Export Hold is functional again.
+
+---
+
 ### v1.15.0-beta.2
 
 #### Bug fixes
