@@ -1,5 +1,17 @@
 # Changelog
 
+### v1.15.0-beta.1
+
+#### What's new
+
+- Connection settings (IP address, port, Slave ID) can now be changed without removing and re-adding the integration. A "Reconfigure" option appears in the three-dot menu on the AlphaESS card in Settings > Devices & Services. The new settings are connection-tested before saving, and the integration reloads automatically on success.
+
+#### Upgrading from v1.14.0
+
+- No entities are renamed, removed, or added. No existing settings are affected. The only change is the addition of the Reconfigure option.
+
+---
+
 ### v1.14.0
 
 #### What's new

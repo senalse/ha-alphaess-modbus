@@ -71,6 +71,47 @@ class AlphaESSConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def async_step_reconfigure(self, user_input: dict | None = None) -> FlowResult:
+        try:
+            entry = self._get_reconfigure_entry()
+        except AttributeError:
+            entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            client = AlphaESSModbusClient(
+                host=user_input[CONF_HOST],
+                port=user_input[CONF_PORT],
+                slave_id=user_input[CONF_SLAVE_ID],
+            )
+            try:
+                await client.connect()
+                if not client.connected:
+                    errors["base"] = "cannot_connect"
+                else:
+                    await client.read_register(0x0102, "int16")
+                    await client.close()
+                    self.hass.config_entries.async_update_entry(entry, data={**entry.data, **user_input})
+                    await self.hass.config_entries.async_reload(entry.entry_id)
+                    return self.async_abort(reason="reconfigure_successful")
+            except Exception:
+                _LOGGER.exception("AlphaESS connection test failed for %s:%s slave=%s",
+                                  user_input[CONF_HOST], user_input[CONF_PORT],
+                                  user_input[CONF_SLAVE_ID])
+                errors["base"] = "cannot_connect"
+            finally:
+                await client.close()
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema({
+                vol.Required(CONF_HOST, default=entry.data.get(CONF_HOST, "")): str,
+                vol.Required(CONF_PORT, default=entry.data.get(CONF_PORT, DEFAULT_PORT)): vol.Coerce(int),
+                vol.Required(CONF_SLAVE_ID, default=entry.data.get(CONF_SLAVE_ID, DEFAULT_SLAVE)): vol.Coerce(int),
+            }),
+            errors=errors,
+        )
+
 
 class AlphaESSOptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:

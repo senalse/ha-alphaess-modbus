@@ -9,13 +9,23 @@
           "port": "Modbus Port",
           "slave_id": "Slave ID"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigure AlphaESS Modbus TCP",
+        "description": "Update the connection settings for your AlphaESS inverter. A connection test will be run before saving.",
+        "data": {
+          "host": "Inverter IP Address",
+          "port": "Modbus Port",
+          "slave_id": "Slave ID"
+        }
       }
     },
     "error": {
       "cannot_connect": "Cannot connect to the inverter. Check the IP address, port, and that Modbus TCP is enabled on the inverter."
     },
     "abort": {
-      "already_configured": "This inverter is already configured."
+      "already_configured": "This inverter is already configured.",
+      "reconfigure_successful": "Connection settings updated successfully."
     }
   },
   "options": {
