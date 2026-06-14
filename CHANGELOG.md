@@ -1,5 +1,21 @@
 # Changelog
 
+### v1.15.0-beta.2
+
+#### Bug fixes
+
+- fix: Force Export no longer turns off automatically after a few seconds when battery power stays near 0 W. This happened when PV production already covered the export target (battery legitimately idle), or when PV register data was unavailable at the moment the switch was turned on. Both cases were misread by the battery activity watchdog as the SoC cutoff having been reached. The Force Export servo already monitors SoC and stops the switch at cutoff, so the watchdog was redundant and only caused false auto-offs.
+
+#### Upgrading from v1.15.0-beta.1
+
+- No entity or setting changes. Force Export now stays on correctly when PV alone covers the export target and no battery discharge is needed.
+
+#### Upgrading from v1.14.0
+
+- No entities are renamed, removed, or added. No existing settings are affected.
+
+---
+
 ### v1.15.0-beta.1
 
 #### What's new
