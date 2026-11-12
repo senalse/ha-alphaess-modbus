@@ -1,6 +1,7 @@
 {
   "domain": "alphaess_modbus",
   "name": "AlphaESS Modbus TCP",
+  "categories": ["energy.solar_batteries"],
   "codeowners": ["@senalse"],
   "config_flow": true,
   "documentation": "https://github.com/senalse/ha-alphaess-modbus",

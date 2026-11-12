@@ -47,19 +47,35 @@ Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewl
 - AlphaESS inverter with **Modbus TCP enabled** on port 502
 - Inverter reachable on your local network (wired LAN or powerline recommended)
 - Home Assistant **2024.10 or newer**
-- HACS installed
+- On Home Assistant 2026.10 or older: HACS installed (2026.11 and newer have the Marketplace built in)
+
+### Compatible models reported by users
+
+Some inverters sold under other brands use the same Modbus registers. Users have reported that the integration works with these models. They have not been tested by the project:
+
+- SunPower Reserve One
+- Haier E-tower
+- ZinVolt Micro
 
 ---
 
 ## Installation
 
-### Via HACS (recommended)
+### Via the Marketplace (Home Assistant 2026.11 and newer)
+
+1. Go to **Settings → Marketplace**
+2. Search for **AlphaESS Modbus TCP** and open it
+3. Click **Download**
+4. Restart Home Assistant
+
+Updates appear in **Settings → Updates**. Beta versions are only offered if you turn on pre-releases for this integration in the Marketplace.
+
+### Via HACS (Home Assistant 2026.10 and older)
 
 1. Open HACS in Home Assistant
-2. Go to **Integrations** → click the three-dot menu → **Custom Repositories**
-3. Add `https://github.com/senalse/ha-alphaess-modbus` - category: **Integration**
-4. Click **Download** on the AlphaESS Modbus TCP card
-5. Restart Home Assistant
+2. Search for **AlphaESS Modbus TCP** and open it
+3. Click **Download**
+4. Restart Home Assistant
 
 ### Manual
 
@@ -82,6 +98,10 @@ Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewl
 | Slave ID | `85` | Standard for AlphaESS inverters |
 
 4. Click **Submit** - Home Assistant will test the connection before saving
+
+### Changing the IP address, port or slave ID
+
+If the inverter moves to a new IP address, you do not need to remove and re-add the integration. Go to **Settings → Devices & Services → AlphaESS Modbus TCP**, open the three-dot menu on the entry and choose **Reconfigure**. The new settings are tested before they are saved, and your entities, history and dashboards are kept.
 
 ### Multiple Inverters
 
