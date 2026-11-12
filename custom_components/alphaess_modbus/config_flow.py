@@ -71,6 +71,45 @@ class AlphaESSConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def _async_test_reconfigure(self, entry, user_input: dict) -> bool:
+        """Return True if the inverter answers at the settings in user_input.
+
+        The inverter accepts only one Modbus TCP connection. When the entry being
+        reconfigured is loaded and still points at the same host and port, its own
+        client holds that connection and a second test client would be refused, so
+        the test runs over the existing connection instead.
+        """
+        host = user_input[CONF_HOST]
+        port = user_input[CONF_PORT]
+        slave_id = user_input[CONF_SLAVE_ID]
+        running = self.hass.data.get(DOMAIN, {}).get(entry.entry_id)
+        running_client = getattr(running, "client", None)
+        same_endpoint = (
+            entry.data.get(CONF_HOST) == host and entry.data.get(CONF_PORT) == port
+        )
+        if running_client is not None and same_endpoint:
+            try:
+                await running_client.probe(slave_id)
+                return True
+            except Exception:
+                _LOGGER.exception("AlphaESS connection test failed for %s:%s slave=%s",
+                                  host, port, slave_id)
+                return False
+
+        client = AlphaESSModbusClient(host=host, port=port, slave_id=slave_id)
+        try:
+            await client.connect()
+            if not client.connected:
+                return False
+            await client.read_register(0x0102, "int16")
+            return True
+        except Exception:
+            _LOGGER.exception("AlphaESS connection test failed for %s:%s slave=%s",
+                              host, port, slave_id)
+            return False
+        finally:
+            await client.close()
+
     async def async_step_reconfigure(self, user_input: dict | None = None) -> FlowResult:
         try:
             entry = self._get_reconfigure_entry()
@@ -79,28 +118,33 @@ class AlphaESSConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            client = AlphaESSModbusClient(
-                host=user_input[CONF_HOST],
-                port=user_input[CONF_PORT],
-                slave_id=user_input[CONF_SLAVE_ID],
+            host = user_input[CONF_HOST]
+            port = user_input[CONF_PORT]
+            new_unique_id = f"{host}:{port}"
+            duplicate = any(
+                other.entry_id != entry.entry_id and other.unique_id == new_unique_id
+                for other in self.hass.config_entries.async_entries(DOMAIN)
             )
-            try:
-                await client.connect()
-                if not client.connected:
-                    errors["base"] = "cannot_connect"
-                else:
-                    await client.read_register(0x0102, "int16")
-                    await client.close()
-                    self.hass.config_entries.async_update_entry(entry, data={**entry.data, **user_input})
-                    await self.hass.config_entries.async_reload(entry.entry_id)
-                    return self.async_abort(reason="reconfigure_successful")
-            except Exception:
-                _LOGGER.exception("AlphaESS connection test failed for %s:%s slave=%s",
-                                  user_input[CONF_HOST], user_input[CONF_PORT],
-                                  user_input[CONF_SLAVE_ID])
-                errors["base"] = "cannot_connect"
-            finally:
-                await client.close()
+            if duplicate:
+                return self.async_abort(reason="already_configured")
+            if await self._async_test_reconfigure(entry, user_input):
+                old_host = entry.data.get(CONF_HOST)
+                title = entry.title
+                if title == f"AlphaESS ({old_host})":
+                    # Only replace the default title; keep a name the user chose.
+                    title = f"AlphaESS ({host})"
+                # The update listener registered in async_setup_entry reloads the
+                # entry exactly once if anything changed; do not reload here as
+                # well (two overlapping reloads would fight over the inverter's
+                # single connection slot).
+                self.hass.config_entries.async_update_entry(
+                    entry,
+                    data={**entry.data, **user_input},
+                    title=title,
+                    unique_id=new_unique_id,
+                )
+                return self.async_abort(reason="reconfigure_successful")
+            errors["base"] = "cannot_connect"
 
         return self.async_show_form(
             step_id="reconfigure",
