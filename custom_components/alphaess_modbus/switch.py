@@ -151,6 +151,10 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             # Persistent preference, not a dispatch. Default ON (PV enabled);
             # restore the last known state across restarts.
             self._is_on = True if state is None else state.state == "on"
+        elif self.switch_key in _HOLD_SWITCHES:
+            # Persistent preference with no dispatch of its own (it only gates the
+            # auto-off of its parent switch), so it survives restarts and reloads.
+            self._is_on = state is not None and state.state == "on"
         elif state and state.state == "on":
             self._is_on = False  # Don't auto-resume dispatch on restart
         self.async_on_remove(
