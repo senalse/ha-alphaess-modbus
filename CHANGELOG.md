@@ -1,5 +1,23 @@
 # Changelog
 
+### v1.15.0-beta.4
+
+#### Bug fixes
+
+- fix: Reconfigure no longer fails with "cannot connect" when the IP address and port are unchanged (for example when only the Slave ID is changed). The inverter accepts a single connection and the integration was already using it, so the connection test was refused. The test now runs over the existing connection.
+- fix: Reconfigure now reloads the integration once instead of twice, and not at all when nothing was changed. This also removes a reload pattern that Home Assistant 2026.12 will reject.
+- fix: After changing the IP address through Reconfigure, the entry name follows the new address (unless you renamed it yourself), and an address that another AlphaESS entry already uses is refused.
+
+#### Changes
+
+- change: The integration now declares its category (solar batteries) for the Home Assistant Marketplace, and the README describes installation through the Marketplace on Home Assistant 2026.11 and later.
+
+#### Upgrading from v1.15.0-beta.3
+
+- No entity or setting changes. Nothing to do after updating.
+
+---
+
 ### v1.15.0-beta.3
 
 #### Bug fixes
