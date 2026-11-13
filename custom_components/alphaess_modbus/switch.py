@@ -43,6 +43,14 @@ _LOGGER = logging.getLogger(__name__)
 _SERVO_GAIN = 0.3
 _SERVO_DEADBAND_W = 80
 _DISPATCH_STALE_REWRITE_S = 60
+# The inverter enforces the dispatch SoC target itself and can stop a step short of
+# the cutoff the watcher compares against (SoC moves in 0.4 % steps). When the battery
+# sits idle this close to the cutoff while real power is being commanded, the target
+# has been reached as far as the inverter is concerned.
+_CUTOFF_STALL_BAND_SOC = 1.0
+_CUTOFF_STALL_MIN_CMD_W = 300
+_CUTOFF_STALL_IDLE_W = 50
+_CUTOFF_STALL_SECONDS = 10
 
 
 def _calc_pv_production(data: dict) -> int | None:
@@ -144,6 +152,8 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._fi_last_write_time: float = 0.0
         # Battery power watcher state
         self._bp_near_zero_since: float | None = None
+        # Force Export / Force Import: battery idle near the SoC cutoff since (monotonic)
+        self._stall_since: float | None = None
 
     async def async_added_to_hass(self) -> None:
         state = await self.async_get_last_state()
@@ -228,7 +238,6 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                     raise ValueError("Force import duration is 0 — set number.alphaess_inverter_force_import_duration to a non-zero value")
                 await self._start_force_import(duration_s)
                 self._schedule_duration_off(duration_s)
-                self._start_battery_power_watcher("force_import_hold")
             elif self.switch_key == "dispatch":
                 await self._start_dispatch()
             elif self.switch_key == "excess_export":
@@ -323,6 +332,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._fi_last_power_raw = None
         self._fi_last_write_time = 0.0
         self._bp_near_zero_since = None
+        self._stall_since = None
 
     def _schedule_duration_off(self, duration_seconds: int) -> None:
         if self._duration_cancel:
@@ -404,6 +414,28 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         """Unconditionally mark this switch on without starting any dispatch."""
         self._is_on = True
         self.async_write_ha_state()
+
+    def _cutoff_stalled(self, *, near_cutoff: bool, commanded_w: float, battery_w: Any) -> bool:
+        """Return True once the inverter has evidently stopped at its SoC target.
+
+        True when the battery has been idle for _CUTOFF_STALL_SECONDS while at least
+        _CUTOFF_STALL_MIN_CMD_W is being commanded and SoC is within
+        _CUTOFF_STALL_BAND_SOC of the cutoff. An idle battery away from the cutoff, or
+        with (almost) nothing commanded, is legitimate and never counts.
+        """
+        if (
+            not near_cutoff
+            or battery_w is None
+            or commanded_w < _CUTOFF_STALL_MIN_CMD_W
+            or abs(float(battery_w)) > _CUTOFF_STALL_IDLE_W
+        ):
+            self._stall_since = None
+            return False
+        now = time.monotonic()
+        if self._stall_since is None:
+            self._stall_since = now
+            return False
+        return now - self._stall_since >= _CUTOFF_STALL_SECONDS
 
     def _start_battery_power_watcher(self, hold_switch_key: str) -> None:
         """Watch power_battery and stop this switch when it stays within +-50 W for 10 s.
@@ -568,7 +600,18 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             d = self._coordinator.data or {}
             soc = d.get("soc_battery")
             cutoff_soc = self._num("force_export_cutoff_soc", 4.0)
-            if soc is not None and float(soc) <= cutoff_soc:
+            reached = soc is not None and float(soc) <= cutoff_soc
+            if not reached:
+                # The inverter can stop discharging a step above the cutoff; without
+                # this the switch would stay on with an idle battery and the house
+                # would run from the grid until the duration ends.
+                reached = self._cutoff_stalled(
+                    near_cutoff=soc is not None
+                    and float(soc) <= cutoff_soc + _CUTOFF_STALL_BAND_SOC,
+                    commanded_w=(self._fe_last_power_raw or 32000) - 32000,
+                    battery_w=d.get("power_battery"),
+                )
+            if reached:
                 switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
                 hold_sw = switches.get("force_export_hold")
                 if not (hold_sw and hold_sw.is_on):
@@ -832,9 +875,33 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         def _check() -> None:
             if not self._is_on:
                 return
+            d = self._coordinator.data or {}
+            soc = d.get("soc_battery")
+            cutoff_soc = self._num("force_import_cutoff_soc", 100.0)
+            reached = soc is not None and float(soc) >= cutoff_soc
+            if not reached:
+                reached = self._cutoff_stalled(
+                    near_cutoff=soc is not None
+                    and float(soc) >= cutoff_soc - _CUTOFF_STALL_BAND_SOC,
+                    commanded_w=32000 - (self._fi_last_power_raw or 32000),
+                    battery_w=d.get("power_battery"),
+                )
+            if reached:
+                # Battery is at the stop-at SoC. An idle battery anywhere else is
+                # normal (house load above the import target clamps the charge to
+                # zero) and must not end the dispatch.
+                switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+                hold_sw = switches.get("force_import_hold")
+                if not (hold_sw and hold_sw.is_on):
+                    task = self.hass.async_create_task(
+                        self._async_turn_off_silent(),
+                        name=f"alphaess_{self.switch_key}_soc_off",
+                    )
+                    self._pending_tasks.add(task)
+                    task.add_done_callback(self._pending_tasks.discard)
+                return
             if self._coordinator.fi_paused:
                 return
-            d = self._coordinator.data or {}
             grid = d.get("power_grid")
             if grid is None:
                 return
