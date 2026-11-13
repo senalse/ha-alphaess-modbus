@@ -530,8 +530,14 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         soc = d.get("soc_battery")
         cutoff_soc = self._num("force_export_cutoff_soc", 4.0)
         if soc is not None and float(soc) <= cutoff_soc:
-            await self._async_turn_off_silent()
-            return
+            switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+            hold_sw = switches.get("force_export_hold")
+            if not (hold_sw and hold_sw.is_on):
+                await self._async_turn_off_silent()
+                return
+            # Hold is on: stay on until the duration ends, same as the servo watcher
+            # does when SoC reaches the cutoff mid-run. The dispatch is still written
+            # so the inverter gets the current cutoff and stops discharging at it.
         # Seed the servo with the feed-forward estimate. At turn-on the battery is not
         # yet dispatching, so the house-load term is accurate; the watcher takes over
         # with grid-error servoing thereafter.
