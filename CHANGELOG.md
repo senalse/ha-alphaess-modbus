@@ -1,5 +1,25 @@
 # Changelog
 
+### v1.15.0-beta.5
+
+#### Bug fixes
+
+- fix: Force Export now ends when the inverter stops discharging just above the cutoff SoC. The inverter enforces the cutoff itself and can stop one SoC step early (for example at 50.4 % with a cutoff of 50 %). The switch used to wait for the exact cutoff, so it stayed on with an idle battery and the house ran from the grid until the duration ended. It now turns off about 10 seconds after the battery goes idle close to the cutoff. This problem was introduced in v1.15.0-beta.2 and is not present in v1.14.0.
+- fix: Force Import no longer turns itself off after about 10 seconds when the battery is idle. This happened whenever the house load was already above the import target, because there was nothing left for the battery to charge with. It now stays on for the full duration and ends at the cutoff SoC, in the same way as Force Export.
+- fix: Force Import now turns off when the cutoff SoC is lowered below the current SoC while it is running.
+- fix: With Force Export Hold on, raising the cutoff SoC above the current SoC while Force Export is running no longer turns the switch off.
+- fix: The four Hold switches now keep their state across a Home Assistant restart and an integration reload. They used to come back off every time.
+- fix: The Sync Dispatch State button no longer turns off the Hold switches or Dispatch PV Enabled. It only clears dispatch switches that are showing on while the inverter is not dispatching.
+
+#### Upgrading from v1.15.0-beta.4
+
+- No entities are renamed, removed, or added.
+- Hold switches now stay on after a restart. If you relied on them resetting to off, turn them off yourself or from an automation.
+- Force Import no longer stops early when the battery is idle. An automation that expected it to switch off by itself in that case should turn it off explicitly or rely on the duration.
+- Dispatch switches (Force Charging, Force Discharging, Force Export, Force Import, Dispatch, Excess Export) still come back off after a restart, as before.
+
+---
+
 ### v1.15.0-beta.4
 
 #### Bug fixes
