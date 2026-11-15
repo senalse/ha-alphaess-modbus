@@ -1,5 +1,18 @@
 # Changelog
 
+### v1.15.0-beta.6
+
+#### Bug fixes
+
+- fix: Force Export now ends at the cutoff SoC without a short period where the house runs from the grid. In beta.5 the inverter stopped discharging just above the cutoff and the switch followed about 15 seconds later, so the house load was imported for those seconds. With Force Export Hold off, the inverter is now given a target 1 % below the cutoff and the switch ends the export at the cutoff itself, while the battery is still discharging. With Hold on nothing changes: the inverter stops at the cutoff and the switch stays on.
+
+#### Upgrading from v1.15.0-beta.5
+
+- No entities are renamed, removed, or added. No settings change.
+- Force Export still ends at the cutoff SoC you set. If Home Assistant loses its connection to the inverter during an export, the inverter stops by itself about 1 % below the cutoff instead of just above it.
+
+---
+
 ### v1.15.0-beta.5
 
 #### Bug fixes
