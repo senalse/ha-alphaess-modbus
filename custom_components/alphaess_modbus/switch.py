@@ -51,6 +51,9 @@ _CUTOFF_STALL_BAND_SOC = 1.0
 _CUTOFF_STALL_MIN_CMD_W = 300
 _CUTOFF_STALL_IDLE_W = 50
 _CUTOFF_STALL_SECONDS = 10
+# Force Export (Hold off) tells the inverter a SoC target this far below the cutoff so the
+# watcher, not the inverter, ends the dispatch (see _write_export_dispatch).
+_CUTOFF_TARGET_MARGIN_SOC = 1.0
 
 
 def _calc_pv_production(data: dict) -> int | None:
@@ -551,7 +554,17 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
 
     async def _write_export_dispatch(self, word: int, duration_s: int, *, reset_timer: bool) -> None:
         cutoff_soc = self._num("force_export_cutoff_soc", 4.0)
-        soc_raw = int(cutoff_soc / DISPATCH_SOC_SCALE)
+        # The inverter stops discharging a step above the SoC target it is given, which
+        # leaves the house on the grid until the stall rule notices. With Hold off the
+        # watcher ends the dispatch at the cutoff, so give the inverter a slightly lower
+        # target and let the watcher stop it while the battery is still discharging.
+        # With Hold on the inverter's own stop is the only one, so it gets the exact cutoff.
+        switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+        hold_sw = switches.get("force_export_hold")
+        target_soc = cutoff_soc
+        if not (hold_sw and hold_sw.is_on):
+            target_soc = max(0.0, cutoff_soc - _CUTOFF_TARGET_MARGIN_SOC)
+        soc_raw = int(target_soc / DISPATCH_SOC_SCALE)
         await self._coordinator.async_write_dispatch([
             1, 0, int(word), 0, 32000, DISPATCH_MODE_SOC_CONTROL, soc_raw, 0, duration_s,
             DISPATCH_FLOW_DIRECTION, DISPATCH_PV_UNCHANGED,
