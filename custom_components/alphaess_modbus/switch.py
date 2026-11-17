@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
@@ -95,11 +96,19 @@ def _servo_step(power_w: float, error_w: float, *, tolerate_positive: bool, ac_l
     return max(0.0, min(float(ac_limit_w), power_w + _SERVO_GAIN * error_w))
 
 
+# Below this grid reading (W) in UPS mode the grid is treated as absent (outage).
+_OFF_GRID_W = 10
+
+
 def _calc_house_load(data: dict) -> int | None:
     grid = data.get("power_grid")
     if grid is None:
         return None
-    if float(data.get("inverter_work_mode", 0)) == 2:
+    # In UPS mode (inverter work mode 2) with the grid present, PV + battery + grid
+    # counts the load twice, so the grid reading is the house load. During a grid
+    # outage the grid meter reads 0 and the house runs from PV and battery, so the
+    # general formula below applies.
+    if float(data.get("inverter_work_mode", 0)) == 2 and abs(float(grid)) > _OFF_GRID_W:
         return round(float(grid))
     pv = _calc_pv_production(data)
     battery = data.get("power_battery")
@@ -285,6 +294,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                 await self._start_dispatch()
             elif self.switch_key == "excess_export":
                 await self._start_excess_export()
+                self._schedule_ee_duration()
         except Exception as err:
             _LOGGER.error("Failed to start %s: %s", self.switch_key, err)
             self._is_on = False
@@ -305,6 +315,10 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         SoC target (see _retarget_servo).
         """
         if not self._is_on:
+            return
+        if self.switch_key == "excess_export":
+            # Its only parameter is the duration: move the stop time, keep running.
+            self._schedule_ee_duration()
             return
         if reset_timer:
             await self.async_turn_on()
@@ -389,6 +403,21 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._fi_settle_until = 0.0
         self._bp_near_zero_since = None
         self._stall_since = None
+        if self.switch_key == "excess_export":
+            self._coordinator.ee_off_at = None
+
+    def _schedule_ee_duration(self) -> None:
+        """Arm (or re-arm) Excess Export's auto-off from its Duration slider; 0 = none."""
+        if self._duration_cancel:
+            self._duration_cancel.cancel()
+            self._duration_cancel = None
+        minutes = self._num("excess_export_duration", 0.0)
+        if not self._is_on or minutes <= 0:
+            self._coordinator.ee_off_at = None
+            return
+        seconds = int(minutes * 60)
+        self._schedule_duration_off(seconds)
+        self._coordinator.ee_off_at = datetime.now(timezone.utc) + timedelta(seconds=seconds)
 
     def _schedule_duration_off(self, duration_seconds: int) -> None:
         if self._duration_cancel:
