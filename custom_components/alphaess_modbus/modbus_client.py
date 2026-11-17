@@ -25,6 +25,16 @@ _CONNECT_RETRY_DELAY = 1.0  # seconds between retries
 # instead, and do NOT indicate a broken link.
 _COMM_ERRORS = (ModbusException, asyncio.TimeoutError, OSError)
 
+# Modbus exception code 2: the inverter does not implement the requested address.
+_ILLEGAL_DATA_ADDRESS = 2
+
+
+class ModbusIllegalAddress(ModbusException):
+    """The inverter answered with exception code 2 (illegal data address).
+
+    A protocol error on a healthy link: the register does not exist on this model.
+    """
+
 
 class AlphaESSModbusClient:
     def __init__(self, host: str, port: int, slave_id: int) -> None:
@@ -120,6 +130,8 @@ class AlphaESSModbusClient:
             self._teardown_client()
             raise ModbusException(f"Comm error {what}: {err}") from err
         if result.isError():
+            if getattr(result, "exception_code", None) == _ILLEGAL_DATA_ADDRESS:
+                raise ModbusIllegalAddress(f"Error {what}: {result}")
             raise ModbusException(f"Error {what}: {result}")
         return result
 
