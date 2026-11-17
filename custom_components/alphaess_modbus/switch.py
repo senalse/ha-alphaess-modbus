@@ -34,14 +34,30 @@ _LOGGER = logging.getLogger(__name__)
 # back drove a kilowatt-scale limit cycle (the battery's own output fed into its next
 # command). Servoing on grid alone breaks that feedback.
 #
-# new_setpoint = last_setpoint + _SERVO_GAIN * grid_error
+# setpoint = setpoint + _SERVO_GAIN * grid_error
 # With ~one poll of meter lag the loop is critically damped near gain 0.25, so a gain
 # of 0.3 gives a fast, essentially overshoot-free response (important for zero-import
-# export tariffs) and zero steady-state error. Raise for faster recovery, lower if it
-# ever hunts. A rewrite is only issued once the setpoint moves by _SERVO_DEADBAND_W,
-# with a _DISPATCH_STALE_REWRITE_S liveness fallback.
+# export tariffs). Raise for faster recovery, lower if it ever hunts.
+#
+# The setpoint is an integrator: every correction is accumulated, and a dispatch write
+# is issued once the accumulated setpoint differs from the last written one by
+# _SERVO_MIN_STEP_W (or after _DISPATCH_STALE_REWRITE_S as a liveness fallback).
+# Corrections are never discarded, so there is no steady-state offset.
+#
+# The hold band around the target is one-sided. Error on the harmless side (exporting
+# more than asked, or importing less than asked) is tolerated up to _SERVO_TOLERANCE_W;
+# error on the costly side (exporting less / importing, or importing more than asked)
+# is corrected once it exceeds _SERVO_NOISE_W. So Force Export settles at or slightly
+# above the export target and never rests at a grid import, and Force Import settles at
+# or slightly below the import target.
 _SERVO_GAIN = 0.3
-_SERVO_DEADBAND_W = 80
+_SERVO_MIN_STEP_W = 20
+_SERVO_TOLERANCE_W = 100
+_SERVO_NOISE_W = 20
+# After a mid-run target change the setpoint is shifted by the change in target (the
+# grid moves 1:1 with battery power) and the servo pauses this long so it does not
+# also act on the step while the meter catches up.
+_SERVO_SETTLE_S = 6.0
 _DISPATCH_STALE_REWRITE_S = 60
 # The inverter enforces the dispatch SoC target itself and can stop a step short of
 # the cutoff the watcher compares against (SoC moves in 0.4 % steps). When the battery
@@ -61,6 +77,22 @@ def _calc_pv_production(data: dict) -> int | None:
     if any(data.get(k) is None for k in keys):
         return None
     return max(0, sum(int(data[k]) for k in keys))
+
+
+def _servo_step(power_w: float, error_w: float, *, tolerate_positive: bool, ac_limit_w: float) -> float:
+    """One servo update of a battery power setpoint (W, >= 0).
+
+    error_w > 0 asks for more battery power. tolerate_positive selects which side of
+    the target is harmless: True for Force Import (under-import), False for Force
+    Export (over-export). Inside the band the setpoint is held unchanged.
+    """
+    if tolerate_positive:
+        hold = -_SERVO_NOISE_W <= error_w <= _SERVO_TOLERANCE_W
+    else:
+        hold = -_SERVO_TOLERANCE_W <= error_w <= _SERVO_NOISE_W
+    if hold:
+        return power_w
+    return max(0.0, min(float(ac_limit_w), power_w + _SERVO_GAIN * error_w))
 
 
 def _calc_house_load(data: dict) -> int | None:
@@ -145,14 +177,22 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._ee_work_mode_1_since: float | None = None
         self._ee_last_power_raw: int | None = None
         self._ee_last_write_time: float = 0.0
-        # Force Export event-driven watcher state
+        # Force Export event-driven watcher state. _fe_last_power_raw is the last
+        # dispatch word written; _fe_power_w is the servo's (unwritten) setpoint in W;
+        # _fe_target_w the export target that setpoint was computed for.
         self._fe_listener_unsub: Any | None = None
         self._fe_last_power_raw: int | None = None
         self._fe_last_write_time: float = 0.0
-        # Force Import event-driven watcher state
+        self._fe_power_w: float | None = None
+        self._fe_target_w: int | None = None
+        self._fe_settle_until: float = 0.0
+        # Force Import event-driven watcher state (same meaning, charge power)
         self._fi_listener_unsub: Any | None = None
         self._fi_last_power_raw: int | None = None
         self._fi_last_write_time: float = 0.0
+        self._fi_power_w: float | None = None
+        self._fi_target_w: int | None = None
+        self._fi_settle_until: float = 0.0
         # Battery power watcher state
         self._bp_near_zero_since: float | None = None
         # Force Export / Force Import: battery idle near the SoC cutoff since (monotonic)
@@ -250,7 +290,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             self._is_on = False
             self.async_write_ha_state()
 
-    async def async_apply_param_change(self, *, reset_timer: bool) -> None:
+    async def async_apply_param_change(self, *, reset_timer: bool, param_key: str | None = None) -> None:
         """Re-apply this switch's dispatch after a mid-run parameter change.
 
         Called from number._refire_if_active when a dispatch-param slider changes
@@ -258,6 +298,11 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         countdown via the full start sequence; a power or cutoff-SoC change
         (reset_timer=False) rewrites only the setpoint and leaves the countdown,
         auto-off timer and any active watcher running.
+
+        For the two grid servos (Force Export, Force Import) a power change shifts
+        the running setpoint by the change in target instead of recomputing it from
+        house load, and a cutoff change rewrites the current setpoint with the new
+        SoC target (see _retarget_servo).
         """
         if not self._is_on:
             return
@@ -272,10 +317,12 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
                 await self._start_force_discharging(duration_s, reset_timer=False)
             elif self.switch_key == "force_export":
                 duration_s = int(self._num("force_export_duration", 120.0) * 60)
-                await self._start_force_export(duration_s, reset_timer=False)
+                if not await self._retarget_servo(param_key, duration_s):
+                    await self._start_force_export(duration_s, reset_timer=False)
             elif self.switch_key == "force_import":
                 duration_s = int(self._num("force_import_duration", 120.0) * 60)
-                await self._start_force_import(duration_s, reset_timer=False)
+                if not await self._retarget_servo(param_key, duration_s):
+                    await self._start_force_import(duration_s, reset_timer=False)
             elif self.switch_key == "dispatch":
                 await self._start_dispatch(reset_timer=False)
         except Exception as err:
@@ -332,8 +379,14 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._ee_last_write_time = 0.0
         self._fe_last_power_raw = None
         self._fe_last_write_time = 0.0
+        self._fe_power_w = None
+        self._fe_target_w = None
+        self._fe_settle_until = 0.0
         self._fi_last_power_raw = None
         self._fi_last_write_time = 0.0
+        self._fi_power_w = None
+        self._fi_target_w = None
+        self._fi_settle_until = 0.0
         self._bp_near_zero_since = None
         self._stall_since = None
 
@@ -417,6 +470,52 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         """Unconditionally mark this switch on without starting any dispatch."""
         self._is_on = True
         self.async_write_ha_state()
+
+    async def _retarget_servo(self, param_key: str | None, duration_s: int) -> bool:
+        """Apply a mid-run power or cutoff change to a running Force Export/Import servo.
+
+        Returns False when there is no running setpoint to adjust (the caller then
+        falls back to the start sequence). A power change shifts the setpoint by the
+        change in target and lets the watcher write it on its next update, so a burst
+        of slider changes costs at most one write per poll. A cutoff change rewrites
+        the last setpoint at once, because the SoC target is part of the dispatch block.
+        """
+        export = self.switch_key == "force_export"
+        last_raw = self._fe_last_power_raw if export else self._fi_last_power_raw
+        power_w = self._fe_power_w if export else self._fi_power_w
+        if param_key is None or last_raw is None or power_w is None:
+            return False
+        prefix = "force_export" if export else "force_import"
+        if param_key == f"{prefix}_power":
+            new_target = int(self._num(f"{prefix}_power", 5.0) * 1000)
+            old_target = self._fe_target_w if export else self._fi_target_w
+            if old_target is None:
+                old_target = new_target
+            shifted = max(0.0, min(float(self._coordinator.ac_limit_w), power_w + (new_target - old_target)))
+            settle = time.monotonic() + _SERVO_SETTLE_S
+            if export:
+                self._fe_power_w, self._fe_target_w, self._fe_settle_until = shifted, new_target, settle
+            else:
+                self._fi_power_w, self._fi_target_w, self._fi_settle_until = shifted, new_target, settle
+            return True
+        if param_key == f"{prefix}_cutoff_soc":
+            if export:
+                soc = (self._coordinator.data or {}).get("soc_battery")
+                cutoff = self._num("force_export_cutoff_soc", 4.0)
+                switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+                hold_sw = switches.get("force_export_hold")
+                if soc is not None and float(soc) <= cutoff and not (hold_sw and hold_sw.is_on):
+                    await self._async_turn_off_silent()
+                    return True
+                await self._write_export_dispatch(last_raw, duration_s, reset_timer=False)
+                self._fe_last_write_time = time.monotonic()
+            else:
+                # The watcher ends the dispatch on its next update if SoC is already
+                # at or above the new cutoff (unless Hold is on).
+                await self._write_import_dispatch(last_raw, duration_s, reset_timer=False)
+                self._fi_last_write_time = time.monotonic()
+            return True
+        return False
 
     def _cutoff_stalled(self, *, near_cutoff: bool, commanded_w: float, battery_w: Any) -> bool:
         """Return True once the inverter has evidently stopped at its SoC target.
@@ -594,6 +693,8 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         await self._write_export_dispatch(power_raw, duration_s, reset_timer=reset_timer)
         self._fe_last_power_raw = power_raw
         self._fe_last_write_time = time.monotonic()
+        self._fe_power_w = float(power_raw - 32000)
+        self._fe_target_w = int(self._num("force_export_power", 5.0) * 1000)
         self._start_force_export_watcher(duration_s)
 
     def _start_force_export_watcher(self, duration_s: int) -> None:
@@ -639,22 +740,30 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             if grid is None:
                 return
             target_w = int(self._num("force_export_power", 5.0) * 1000)
+            now = time.monotonic()
             if self._fe_last_power_raw is None:
                 # No baseline yet (initial feed-forward was deferred). Seed from the
                 # feed-forward estimate if available, else assume discharge == target.
                 seed = self._compute_force_export_power_raw(d)
                 word = seed if seed is not None else int(32000 + max(0, target_w))
+                self._fe_power_w = float(word - 32000)
             else:
-                # Servo: drive grid toward -target by trimming the discharge word.
-                # error > 0 means exporting too little, so discharge more.
-                error_w = float(grid) + target_w
-                new_discharge = (self._fe_last_power_raw - 32000) + _SERVO_GAIN * error_w
-                new_discharge = max(0.0, min(float(self._coordinator.ac_limit_w), new_discharge))
-                word = int(round(32000 + new_discharge))
-            now = time.monotonic()
+                if self._fe_power_w is None:
+                    self._fe_power_w = float(self._fe_last_power_raw - 32000)
+                if now >= self._fe_settle_until:
+                    # Servo: drive grid toward -target by trimming the discharge.
+                    # error > 0 means exporting too little (or importing): discharge more.
+                    self._fe_power_w = _servo_step(
+                        self._fe_power_w,
+                        float(grid) + target_w,
+                        tolerate_positive=False,
+                        ac_limit_w=self._coordinator.ac_limit_w,
+                    )
+                word = int(round(32000 + self._fe_power_w))
+            self._fe_target_w = target_w
             changed = (
                 self._fe_last_power_raw is None
-                or abs(word - self._fe_last_power_raw) >= _SERVO_DEADBAND_W
+                or abs(word - self._fe_last_power_raw) >= _SERVO_MIN_STEP_W
             )
             stale = (now - self._fe_last_write_time) >= _DISPATCH_STALE_REWRITE_S
             if changed or stale:
@@ -871,6 +980,8 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         await self._write_import_dispatch(power_raw, duration_s, reset_timer=reset_timer)
         self._fi_last_power_raw = power_raw
         self._fi_last_write_time = time.monotonic()
+        self._fi_power_w = float(32000 - power_raw)
+        self._fi_target_w = int(self._num("force_import_power", 5.0) * 1000)
         self._start_force_import_watcher(duration_s)
 
     def _start_force_import_watcher(self, duration_s: int) -> None:
@@ -919,22 +1030,30 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             if grid is None:
                 return
             target_w = int(self._num("force_import_power", 5.0) * 1000)
+            now = time.monotonic()
             if self._fi_last_power_raw is None:
                 # No baseline yet (initial feed-forward was deferred). Seed from the
                 # feed-forward estimate if available, else assume charge == target.
                 seed = self._compute_force_import_power_raw(d)
                 word = seed if seed is not None else int(32000 - max(0, target_w))
+                self._fi_power_w = float(32000 - word)
             else:
-                # Servo: drive grid toward +target by trimming the charge word.
-                # error > 0 means importing too little, so charge more.
-                error_w = target_w - float(grid)
-                new_charge = (32000 - self._fi_last_power_raw) + _SERVO_GAIN * error_w
-                new_charge = max(0.0, min(float(self._coordinator.ac_limit_w), new_charge))
-                word = int(round(32000 - new_charge))
-            now = time.monotonic()
+                if self._fi_power_w is None:
+                    self._fi_power_w = float(32000 - self._fi_last_power_raw)
+                if now >= self._fi_settle_until:
+                    # Servo: drive grid toward +target by trimming the charge.
+                    # error > 0 means importing too little, so charge more.
+                    self._fi_power_w = _servo_step(
+                        self._fi_power_w,
+                        target_w - float(grid),
+                        tolerate_positive=True,
+                        ac_limit_w=self._coordinator.ac_limit_w,
+                    )
+                word = int(round(32000 - self._fi_power_w))
+            self._fi_target_w = target_w
             changed = (
                 self._fi_last_power_raw is None
-                or abs(word - self._fi_last_power_raw) >= _SERVO_DEADBAND_W
+                or abs(word - self._fi_last_power_raw) >= _SERVO_MIN_STEP_W
             )
             stale = (now - self._fi_last_write_time) >= _DISPATCH_STALE_REWRITE_S
             if changed or stale:

@@ -146,4 +146,4 @@ class AlphaESSNumber(RestoreEntity, NumberEntity):
             # A power or cutoff-SoC change only updates the setpoint and must
             # leave the running countdown untouched (issue #14).
             reset_timer = self._reg.key.endswith("_duration")
-            await sw.async_apply_param_change(reset_timer=reset_timer)
+            await sw.async_apply_param_change(reset_timer=reset_timer, param_key=self._reg.key)
