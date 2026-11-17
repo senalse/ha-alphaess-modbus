@@ -56,9 +56,14 @@ _SERVO_MIN_STEP_W = 20
 _SERVO_TOLERANCE_W = 100
 _SERVO_NOISE_W = 20
 # After a mid-run target change the setpoint is shifted by the change in target (the
-# grid moves 1:1 with battery power) and the servo pauses this long so it does not
-# also act on the step while the meter catches up.
+# grid moves 1:1 with battery power). For a step of at least _SERVO_SETTLE_MIN_STEP_W the
+# servo then pauses _SERVO_SETTLE_S so it does not also act on the step while the meter
+# catches up. A pause is never extended by further changes and a new one only starts
+# after a full settle period of normal servoing, so an automation that changes the target
+# every second cannot keep the feedback switched off (seen live 2026-11-18: a load step
+# went uncorrected for 27 s). Small steps do not pause; the overshoot is negligible.
 _SERVO_SETTLE_S = 6.0
+_SERVO_SETTLE_MIN_STEP_W = 300
 _DISPATCH_STALE_REWRITE_S = 60
 # The inverter enforces the dispatch SoC target itself and can stop a step short of
 # the cutoff the watcher compares against (SoC moves in 0.4 % steps). When the battery
@@ -521,7 +526,10 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             if old_target is None:
                 old_target = new_target
             shifted = max(0.0, min(float(self._coordinator.ac_limit_w), power_w + (new_target - old_target)))
-            settle = time.monotonic() + _SERVO_SETTLE_S
+            now = time.monotonic()
+            settle = self._fe_settle_until if export else self._fi_settle_until
+            if abs(new_target - old_target) >= _SERVO_SETTLE_MIN_STEP_W and now >= settle + _SERVO_SETTLE_S:
+                settle = now + _SERVO_SETTLE_S
             if export:
                 self._fe_power_w, self._fe_target_w, self._fe_settle_until = shifted, new_target, settle
             else:
