@@ -91,6 +91,12 @@ sections:
             name: Max Charge Current
           - entity: sensor.alphaess_inverter_battery_max_discharge_current
             name: Max Discharge Current
+          - entity: sensor.alphaess_inverter_battery_max_charge_power
+            name: Max Charge Power
+          - entity: sensor.alphaess_inverter_battery_max_discharge_power
+            name: Max Discharge Power
+          - entity: sensor.alphaess_inverter_battery_soc_calibration
+            name: SoC Calibration
           - type: section
           - entity: sensor.alphaess_inverter_battery_min_cell_temp
             name: Min Cell Temp
@@ -204,9 +210,15 @@ sections:
             name: Enable
           - entity: binary_sensor.alphaess_inverter_excess_export_pause
             name: Pause
+          - entity: sensor.alphaess_inverter_excess_export_countdown
+            name: Countdown
+          - entity: sensor.alphaess_inverter_excess_power
+            name: Excess Power
           - type: section
           - entity: select.alphaess_inverter_inverter_ac_limit
             name: Inverter AC Limit
+          - entity: number.alphaess_inverter_excess_export_duration
+            name: Duration (min, 0 = no limit)
 
       - type: entities
         title: Force Import
@@ -351,6 +363,8 @@ sections:
             name: Battery Discharged
           - entity: sensor.alphaess_inverter_today_battery_charged_from_grid
             name: Grid -> Battery
+          - entity: sensor.alphaess_inverter_today_s_house_load
+            name: House Load
 
       - type: entities
         title: Lifetime Energy
@@ -361,6 +375,8 @@ sections:
             name: Feed to Grid
           - entity: sensor.alphaess_inverter_total_energy_consumption_from_grid_meter
             name: From Grid
+          - entity: sensor.alphaess_inverter_total_energy_feed_to_grid_pv
+            name: From PV Meter
           - entity: sensor.alphaess_inverter_total_energy_charge_battery
             name: Charged Battery
           - entity: sensor.alphaess_inverter_total_energy_discharge_battery
@@ -380,6 +396,8 @@ sections:
             name: Inverter Temperature
           - entity: sensor.alphaess_inverter_inverter_work_mode
             name: Work Mode
+          - entity: sensor.alphaess_inverter_inverter_work_mode_name
+            name: Work Mode Name
           - entity: sensor.alphaess_inverter_system_fault
             name: System Fault
           - entity: sensor.alphaess_inverter_battery_warning
