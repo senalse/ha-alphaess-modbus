@@ -23,21 +23,41 @@ from homeassistant.util import dt as dt_util
 
 from .const import DAILY_ENERGY_SENSORS, DOMAIN, SENSOR_REGISTERS, ModbusSensorDef
 from .coordinator import AlphaESSCoordinator
+from .switch import _calc_house_load, _calc_pv_production
 
 
 @dataclass
 class CalculatedSensorDef:
     key: str
     name: str
-    unit: str
+    unit: str | None
     device_class: str | None
+    state_class: str | None = "measurement"
+    icon: str | None = None
 
 
 CALCULATED_SENSORS: list[CalculatedSensorDef] = [
     CalculatedSensorDef("current_pv_production", "Current PV Production", "W", "power"),
     CalculatedSensorDef("current_house_load", "Current House Load", "W", "power"),
     CalculatedSensorDef("battery_remaining_time", "Battery Remaining Time", "min", "duration"),
+    CalculatedSensorDef("inverter_work_mode_name", "Inverter Work Mode Name", None, None,
+                        state_class=None, icon="mdi:state-machine"),
 ]
+
+# Inverter work mode (0x0440) as documented by the vendor register list.
+_WORK_MODE_NAMES: dict[int, str] = {
+    0: "Wait",
+    1: "Online",
+    2: "UPS",
+    3: "Bypass",
+    4: "Fault",
+    5: "DC",
+    6: "Self Test",
+    7: "Check",
+    8: "Update Master",
+    9: "Update Slave",
+    10: "Update ARM",
+}
 
 _DEVICE_CLASS_MAP = {
     "battery": SensorDeviceClass.BATTERY,
@@ -191,6 +211,18 @@ class AlphaESSSensor(CoordinatorEntity[AlphaESSCoordinator], SensorEntity):
             return formatter(raw)
         return raw
 
+    @property
+    def extra_state_attributes(self) -> dict | None:
+        if self._reg.key != "battery_status" or not self.coordinator.data:
+            return None
+        raw = self.coordinator.data.get("battery_status")
+        try:
+            n = int(raw)
+        except (TypeError, ValueError):
+            return None
+        # High byte = charge state (0, 1 or 2), low byte = discharge state (0 or 1).
+        return {"charge_state": (n >> 8) & 0xFF, "discharge_state": n & 0xFF}
+
 
 class AlphaESSCalculatedSensor(CoordinatorEntity[AlphaESSCoordinator], SensorEntity):
     _attr_has_entity_name = True
@@ -207,14 +239,11 @@ class AlphaESSCalculatedSensor(CoordinatorEntity[AlphaESSCoordinator], SensorEnt
         self._attr_unique_id = f"{entry.entry_id}_{defn.key}"
         self._attr_name = defn.name
         self._attr_native_unit_of_measurement = defn.unit
-        self._attr_device_class = _DEVICE_CLASS_MAP.get(defn.device_class)
+        self._attr_device_class = _DEVICE_CLASS_MAP.get(defn.device_class or "")
+        self._attr_state_class = _STATE_CLASS_MAP.get(defn.state_class or "")
+        if defn.icon:
+            self._attr_icon = defn.icon
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
-
-    def _pv_production(self, d: dict) -> int | None:
-        keys = ["pv1_power", "pv2_power", "pv3_power", "pv4_power", "active_power_pv_meter"]
-        if any(d.get(k) is None for k in keys):
-            return None
-        return max(0, sum(int(d[k]) for k in keys))
 
     @property
     def native_value(self):
@@ -223,19 +252,17 @@ class AlphaESSCalculatedSensor(CoordinatorEntity[AlphaESSCoordinator], SensorEnt
             return None
 
         if self._defn.key == "current_pv_production":
-            return self._pv_production(d)
+            return _calc_pv_production(d)
 
         if self._defn.key == "current_house_load":
-            grid = d.get("power_grid")
-            if grid is None:
+            return _calc_house_load(d)
+
+        if self._defn.key == "inverter_work_mode_name":
+            mode = d.get("inverter_work_mode")
+            if mode is None:
                 return None
-            if float(d.get("inverter_work_mode", 0)) == 2:
-                return round(float(grid))
-            pv = self._pv_production(d)
-            battery = d.get("power_battery")
-            if pv is None or battery is None:
-                return None
-            return max(0, int(pv) + int(battery) + int(grid))
+            n = int(mode)
+            return _WORK_MODE_NAMES.get(n, f"Unknown ({n})")
 
         if self._defn.key == "battery_remaining_time":
             raw = d.get("battery_remaining_time_raw")

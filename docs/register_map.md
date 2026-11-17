@@ -28,7 +28,7 @@ Sensors are polled at the interval shown. Entries marked **off** in the Default 
 |---------|-----|------|-------------|------|------|--------------|------|---------|
 | 0x041C | `inverter_grid_frequency` | Grid Frequency | AC grid frequency measured at the inverter connection point | Hz | int16 | x0.01 | 30 s | on |
 | 0x0435 | `inverter_temperature` | Inverter Temperature | Internal inverter temperature | °C | int16 | x0.1 | 60 s | on |
-| 0x0440 | `inverter_work_mode` | Inverter Work Mode | Inverter operating mode (1 = normal, 2 = bypass/EPS; other values are model-specific) | - | int16 | - | 5 s | on |
+| 0x0440 | `inverter_work_mode` | Inverter Work Mode | Inverter work mode code: 0 Wait, 1 Online, 2 UPS, 3 Bypass, 4 Fault, 5 DC, 6 Self Test, 7 Check, 8 Update Master, 9 Update Slave, 10 Update ARM | - | int16 | - | 5 s | on |
 | 0x064A | `inverter_sn` | Inverter Serial Number | Inverter serial number string | - | string | - | 60 s | on |
 | 0x0115 | `bms_version` | BMS Version | Battery Management System firmware version number | - | int16 | - | 60 s | on |
 | 0x0116 | `lmu_version` | LMU Version | Lithium Management Unit firmware version number | - | int16 | - | 60 s | on |
@@ -74,7 +74,7 @@ Sensors are polled at the interval shown. Entries marked **off** in the Default 
 
 | Address | Key | Name | Description | Unit | Type | Scale/Offset | Poll | Default |
 |---------|-----|------|-------------|------|------|--------------|------|---------|
-| 0x0126 | `power_battery` | Battery Power | Battery charge/discharge power; positive = charging, negative = discharging | W | int16 | - | 1 s | on |
+| 0x0126 | `power_battery` | Battery Power | Battery power; positive = discharging, negative = charging | W | int16 | - | 1 s | on |
 
 ### Inverter Power
 
@@ -114,11 +114,14 @@ Sensors are polled at the interval shown. Entries marked **off** in the Default 
 |---------|-----|------|-------------|------|------|--------------|------|---------|
 | 0x0010 | `total_energy_feed_to_grid_meter` | Total Energy Feed to Grid (Meter) | Lifetime export energy measured at the grid meter; use this for the HA energy dashboard | kWh | uint32 | x0.01 | 60 s | on |
 | 0x0012 | `total_energy_consumption_from_grid_meter` | Total Energy Consumption from Grid (Meter) | Lifetime import energy measured at the grid meter; use this for the HA energy dashboard | kWh | uint32 | x0.01 | 60 s | on |
-| 0x0090 | `total_energy_feed_to_grid_pv` | Total Energy Feed to Grid (PV) | Lifetime energy exported from PV, measured at the AC PV meter | kWh | uint32 | x0.01 | 60 s | on |
+| 0x0092 | `total_energy_feed_to_grid_pv` | Total Energy Feed to Grid (PV) | Lifetime energy produced by an AC-coupled PV inverter, measured at the AC PV meter | kWh | uint32 | x0.01 | 60 s | on |
+| 0x0090 | `total_energy_pv_inverter_consumption` | Total Energy PV Inverter Consumption | Lifetime energy drawn by an AC-coupled PV inverter (standby consumption), measured at the AC PV meter | kWh | uint32 | x0.01 | 60 s | off |
 | 0x0120 | `total_energy_charge_battery` | Total Energy Charge Battery | Lifetime energy delivered to the battery | kWh | uint32 | x0.1 | 60 s | on |
 | 0x0122 | `total_energy_discharge_battery` | Total Energy Discharge Battery | Lifetime energy drawn from the battery | kWh | uint32 | x0.1 | 60 s | on |
 | 0x0124 | `total_energy_charge_battery_from_grid` | Total Energy Charge Battery from Grid | Lifetime energy used to charge the battery from the grid | kWh | uint32 | x0.1 | 60 s | on |
 | 0x043E | `total_energy_from_pv` | Total Energy from PV | Lifetime total PV energy generated | kWh | uint32 | x0.1 | 60 s | on |
+| 0x08D0 | `pv_inverter_energy` | PV Inverter Energy | Lifetime energy of the AC-coupled PV inverter as totalled by the system | kWh | uint32 | x0.01 | 60 s | off |
+| 0x08D2 | `pv_system_total_energy` | PV System Total Energy | Lifetime PV energy of the whole system (inverter strings plus AC-coupled PV inverter) | kWh | uint32 | x0.01 | 60 s | off |
 
 ### Faults & Warnings
 
@@ -184,12 +187,20 @@ Sensors are polled at the interval shown. Entries marked **off** in the Default 
 | 0x011B | `soh_battery` | Battery State of Health | Battery state of health; 100% indicates a fully healthy pack | % | int16 | x0.1 | 10 s | on |
 | 0x0103 | `battery_status` | Battery Status | Battery status code reported by the BMS | - | int16 | - | 60 s | on |
 | 0x0100 | `battery_voltage` | Battery Voltage | Battery pack terminal voltage | V | int16 | x0.1 | 60 s | on |
-| 0x0101 | `battery_current` | Battery Current | Battery pack current; positive = charging, negative = discharging | A | int16 | x0.1 | 60 s | on |
+| 0x0101 | `battery_current` | Battery Current | Battery pack current; positive = discharging, negative = charging | A | int16 | x0.1 | 60 s | on |
 | 0x010D | `battery_min_cell_temp` | Battery Min Cell Temp | Lowest temperature across all battery cells | °C | uint16 | x0.1 | 10 s | on |
 | 0x0110 | `battery_max_cell_temp` | Battery Max Cell Temp | Highest temperature across all battery cells | °C | uint16 | x0.1 | 10 s | on |
 | 0x0111 | `battery_max_charge_current` | Battery Max Charge Current | Maximum charge current allowed by the BMS at present | A | uint16 | x0.1 | 10 s | on |
 | 0x0112 | `battery_max_discharge_current` | Battery Max Discharge Current | Maximum discharge current allowed by the BMS at present | A | uint16 | x0.1 | 10 s | on |
 | 0x0127 | `battery_remaining_time_raw` | Battery Remaining Time (raw) | BMS estimate of time to full charge or discharge | min | int16 | - | 60 s | off |
+| 0x0128 | `battery_impl_charge_soc` | Battery Implementation Charge SoC | Charge SoC window reported by the BMS (rated SoC minus UPS reserve); not populated on every model | % | uint16 | x0.1 | 60 s | off |
+| 0x0129 | `battery_impl_discharge_soc` | Battery Implementation Discharge SoC | Discharge SoC window reported by the BMS (rated SoC minus UPS reserve); not populated on every model | % | uint16 | x0.1 | 60 s | off |
+| 0x012A | `battery_remaining_charge_soc` | Battery Remaining Charge SoC | SoC still available to charge (rated SoC minus remaining SoC); not populated on every model | % | uint16 | x0.1 | 60 s | off |
+| 0x012B | `battery_remaining_discharge_soc` | Battery Remaining Discharge SoC | SoC still available to discharge (remaining SoC minus UPS reserve); not populated on every model | % | uint16 | x0.1 | 60 s | off |
+| 0x012C | `battery_max_charge_power` | Battery Max Charge Power | Maximum charge power the BMS allows at present | W | uint16 | - | 10 s | on |
+| 0x012D | `battery_max_discharge_power` | Battery Max Discharge Power | Maximum discharge power the BMS allows at present | W | uint16 | - | 10 s | on |
+| 0x012F | `battery_soc_calibration` | Battery SoC Calibration | BMS SoC calibration flag; 1 = calibration enabled, 0 = disabled | - | uint16 | - | 10 s | on |
+| 0x0130 | `battery_single_cut_error` | Battery Single Cut Error Code | BMS single cut error code; 0 = no error | - | uint16 | - | 60 s | off |
 | 0x0104 | `battery_relay_status` | Battery Relay Status | Battery contactor/relay state bitmap | - | uint16 | - | 60 s | off |
 | 0x0107 | `battery_min_cell_voltage` | Battery Min Cell Voltage | Voltage of the lowest cell in the pack; watch for cell imbalance | V | uint16 | x0.001 | 60 s | on |
 | 0x010A | `battery_max_cell_voltage` | Battery Max Cell Voltage | Voltage of the highest cell in the pack; watch for cell imbalance | V | uint16 | x0.001 | 60 s | on |
