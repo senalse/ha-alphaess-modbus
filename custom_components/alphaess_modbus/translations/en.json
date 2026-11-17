@@ -146,6 +146,9 @@
       },
       "force_import_duration": {
         "name": "Force Import Duration"
+      },
+      "excess_export_duration": {
+        "name": "Excess Export Duration"
       }
     },
     "select": {
@@ -192,6 +195,12 @@
       },
       "today_battery_charged_from_grid": {
         "name": "Today's Battery Charged from Grid"
+      },
+      "excess_export_countdown": {
+        "name": "Excess Export Countdown"
+      },
+      "today_house_load": {
+        "name": "Today's House Load"
       }
     },
     "button": {

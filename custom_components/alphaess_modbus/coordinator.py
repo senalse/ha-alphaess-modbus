@@ -127,6 +127,8 @@ class AlphaESSCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.dispatch_started_at: datetime | None = None
         self.dispatch_duration_s: int = 0
         self.active_dispatch_key: str | None = None
+        # When Excess Export will turn itself off (None = no duration set or not running)
+        self.ee_off_at: datetime | None = None
         # Registers this model does not implement (exception code 2): key -> monotonic
         # time of the next single retry. _illegal_counts tracks consecutive code-2 replies.
         self._unsupported: dict[str, float] = {}

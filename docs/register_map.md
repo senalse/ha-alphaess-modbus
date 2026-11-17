@@ -289,13 +289,14 @@ Numbers with an address write directly to a Modbus register when changed. Number
 | N/A | `force_discharging_power` | Force Discharging Power | Target discharge power for Force Discharging, capped to inverter AC limit (dispatch parameter) | kW | 0 - 20 | 0.1 |
 | N/A | `force_export_cutoff_soc` | Force Export Stop at SoC | Force Export stops when battery falls to this SoC (dispatch parameter) | % | 4 - 100 | 1 |
 | N/A | `force_export_duration` | Force Export Duration | Maximum time Force Export runs before auto-stopping (dispatch parameter) | min | 0 - 480 | 5 |
-| N/A | `force_export_power` | Force Export Power | Target grid export level for Force Export; the integration adds house load and subtracts PV to derive the battery dispatch value (dispatch parameter) | kW | 0 - 20 | 0.1 |
+| N/A | `force_export_power` | Force Export Power | Grid export target for Force Export, measured at the grid meter; the integration adjusts the battery to hold it (dispatch parameter) | kW | 0 - 20 | 0.1 |
 | N/A | `dispatch_cutoff_soc` | Dispatch Stop at SoC | Generic Dispatch stops when battery reaches this SoC in mode 2 (SoC Control) (dispatch parameter) | % | 4 - 100 | 1 |
 | N/A | `dispatch_duration` | Dispatch Duration | Maximum time Generic Dispatch runs before auto-stopping (dispatch parameter) | min | 0 - 480 | 5 |
 | N/A | `dispatch_power` | Dispatch Power | Power setpoint for Generic Dispatch; positive = discharge/export, negative = charge/import (dispatch parameter) | kW | -20 - 20 | 0.1 |
 | N/A | `force_import_cutoff_soc` | Force Import Stop at SoC | Force Import stops when battery reaches this SoC (dispatch parameter) | % | 4 - 100 | 1 |
 | N/A | `force_import_duration` | Force Import Duration | Maximum time Force Import runs before auto-stopping (dispatch parameter) | min | 0 - 480 | 5 |
-| N/A | `force_import_power` | Force Import Power | Target grid import level for Force Import; the integration subtracts PV and adds house load to derive the battery charge value (dispatch parameter) | kW | 0 - 20 | 0.1 |
+| N/A | `force_import_power` | Force Import Power | Grid import target for Force Import, measured at the grid meter; the integration adjusts battery charging to hold it (dispatch parameter) | kW | 0 - 20 | 0.1 |
+| N/A | `excess_export_duration` | Excess Export Duration | Excess Export turns itself off after this many minutes; 0 = runs until turned off | min | 0 - 480 | 5 |
 
 ---
 

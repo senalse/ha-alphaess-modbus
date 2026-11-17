@@ -21,7 +21,7 @@ Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewl
 
 ## Features
 
-- **103 sensor entities enabled by default** (172 total) - real-time power flows, battery SoC/SoH, cell voltages, temperatures, voltages, energy totals, daily energy summaries, dispatch diagnostics, grid safety parameters, faults & warnings
+- **110 sensor entities enabled by default** (187 total) - real-time power flows, battery SoC/SoH, cell voltages, temperatures, voltages, energy totals, daily energy summaries, dispatch diagnostics, grid safety parameters, faults & warnings
 - **Force Charging** - charge battery from grid at configurable power (kW), duration, and cutoff SoC
 - **Force Charging Hold** - keeps Force Charging running indefinitely after the duration expires; turn on before starting Force Charging for continuous charging without a time limit
 - **Force Discharging** - discharge battery at configurable power, duration, and cutoff SoC; automatically stops 1% above the cutoff and resets dispatch so the inverter returns to self-consumption without any grid draw
@@ -158,7 +158,7 @@ B3 and B3PLUS inverters report some registers with different scale factors. Sele
 
 ### Sensors (read-only)
 
-103 sensors are enabled by default; the remaining 69 are disabled and can be turned on individually in HA under Settings → Devices & Services → [device] → entities. Sensors marked *(disabled)* below are off by default.
+110 sensors are enabled by default; the remaining 77 are disabled and can be turned on individually in HA under Settings → Devices & Services → [device] → entities. Sensors marked *(disabled)* below are off by default.
 
 #### Power (real-time)
 
@@ -167,7 +167,7 @@ These sensors have a 1 s `scan_interval` but the master loop runs at 2 s in Norm
 | Entity | Unit | Poll | Description |
 |--------|------|------|-------------|
 | Grid Power | W | 2 s (1 s Fast) | Positive = import from grid, negative = export to grid |
-| Battery Power | W | 2 s (1 s Fast) | Power to/from battery |
+| Battery Power | W | 2 s (1 s Fast) | Positive = discharging, negative = charging |
 | Active Power PV Meter | W | 2 s (1 s Fast) | PV generation measured at the meter point |
 | PV String 1 Power | W | 2 s (1 s Fast) | |
 | PV String 2 Power | W | 2 s (1 s Fast) | |
@@ -175,7 +175,8 @@ These sensors have a 1 s `scan_interval` but the master loop runs at 2 s in Norm
 | PV String 4 Power | W | 2 s (1 s Fast) | |
 | PV Total Power (Inverter) *(disabled)* | W | 2 s (1 s Fast) | Sum of all PV strings per inverter register 0x0453 |
 | Current PV Production | W | calculated | Sum of all PV string powers + PV meter |
-| Current House Load | W | calculated | Net house consumption derived from grid, battery, and PV |
+| Current House Load | W | calculated | Net house consumption derived from grid, battery, and PV; during a grid outage it comes from PV and battery |
+| Excess Power | W | calculated | PV production minus house load, never below 0 |
 
 #### Grid
 
@@ -195,6 +196,7 @@ These sensors have a 1 s `scan_interval` but the master loop runs at 2 s in Norm
 | Entity | Unit | Poll | Description |
 |--------|------|------|-------------|
 | Inverter Work Mode | - | 5 s | Operating mode code |
+| Inverter Work Mode Name | - | calculated | Work mode as text: Wait, Online, UPS, Bypass, Fault, DC, Self Test, Check, Update Master, Update Slave, Update ARM |
 | Inverter Power L1 | W | 5 s | |
 | Inverter Power L2 | W | 5 s | |
 | Inverter Power L3 | W | 5 s | |
@@ -233,8 +235,16 @@ These sensors have a 1 s `scan_interval` but the master loop runs at 2 s in Norm
 | Battery Max Charge Current | A | 10 s | BMS-reported maximum |
 | Battery Max Discharge Current | A | 10 s | BMS-reported maximum |
 | Battery Voltage | V | 60 s | Pack terminal voltage |
-| Battery Current | A | 60 s | Pack current |
-| Battery Status | - | 60 s | Human-readable BMS status with raw value, e.g. "Charging + Discharging (257)" |
+| Battery Current | A | 60 s | Pack current; positive = discharging, negative = charging |
+| Battery Status | - | 60 s | Human-readable BMS status with raw value, e.g. "Charging + Discharging (257)"; the `charge_state` (0, 1 or 2) and `discharge_state` (0 or 1) attributes split the value into its high and low byte |
+| Battery Max Charge Power | W | 10 s | Maximum charge power the BMS allows at present |
+| Battery Max Discharge Power | W | 10 s | Maximum discharge power the BMS allows at present |
+| Battery SoC Calibration | - | 10 s | BMS SoC calibration flag (1 = enabled, 0 = disabled) |
+| Battery Implementation Charge SoC *(disabled)* | % | 60 s | Charge SoC window reported by the BMS; not populated on every model |
+| Battery Implementation Discharge SoC *(disabled)* | % | 60 s | Discharge SoC window reported by the BMS; not populated on every model |
+| Battery Remaining Charge SoC *(disabled)* | % | 60 s | SoC still available to charge; not populated on every model |
+| Battery Remaining Discharge SoC *(disabled)* | % | 60 s | SoC still available to discharge; not populated on every model |
+| Battery Single Cut Error Code *(disabled)* | - | 60 s | BMS single cut error code (0 = no error) |
 | Battery Remaining Time | min | 60 s | |
 | Battery Min Cell Voltage | V | 60 s | Lowest cell voltage in pack (3 d.p.) |
 | Battery Max Cell Voltage | V | 60 s | Highest cell voltage in pack (3 d.p.) |
@@ -252,7 +262,10 @@ These sensors have a 1 s `scan_interval` but the master loop runs at 2 s in Norm
 | Total Energy from PV | kWh | 60 s | Lifetime PV generation |
 | Total Energy Feed to Grid (Meter) | kWh | 60 s | Lifetime export measured at grid meter |
 | Total Energy Consumption from Grid (Meter) | kWh | 60 s | Lifetime import measured at grid meter |
-| Total Energy Feed to Grid (PV) | kWh | 60 s | Lifetime export measured at PV meter |
+| Total Energy Feed to Grid (PV) | kWh | 60 s | Lifetime production of an AC-coupled PV inverter, measured at the PV meter |
+| Total Energy PV Inverter Consumption *(disabled)* | kWh | 60 s | Lifetime standby consumption of an AC-coupled PV inverter, measured at the PV meter |
+| PV Inverter Energy *(disabled)* | kWh | 60 s | Lifetime AC-coupled PV inverter energy as totalled by the system |
+| PV System Total Energy *(disabled)* | kWh | 60 s | Lifetime PV energy of the whole system (inverter strings plus AC-coupled PV inverter) |
 | Total Energy Charge Battery | kWh | 60 s | Lifetime energy delivered into battery |
 | Total Energy Discharge Battery | kWh | 60 s | Lifetime energy drawn from battery |
 | Total Energy Charge Battery from Grid | kWh | 60 s | Lifetime grid-to-battery energy |
@@ -269,6 +282,7 @@ These sensors reset each day at midnight using the inverter's lifetime cumulativ
 | Today's Battery Charged | kWh | Energy delivered into battery today |
 | Today's Battery Discharged | kWh | Energy drawn from battery today |
 | Today's Battery Charged from Grid | kWh | Grid-to-battery energy today |
+| Today's House Load | kWh | Energy used by the house today, integrated from Current House Load |
 
 #### Faults & Warnings
 
@@ -313,6 +327,7 @@ These sensors reset each day at midnight using the inverter's lifetime cumulativ
 | Force Discharging Countdown | min | 5 s | Live remaining time when Force Discharging is active; 0 otherwise |
 | Force Export Countdown | min | 5 s | Live remaining time when Force Export is active; 0 otherwise |
 | Force Import Countdown | min | 5 s | Live remaining time when Force Import is active; 0 otherwise |
+| Excess Export Countdown | min | 1 s | Time left before Excess Export turns itself off; unknown when no Excess Export Duration is set |
 
 #### Scheduling - Charging / Discharging Periods
 
@@ -409,13 +424,13 @@ These are read-only sensor views of the scheduling registers. The writable equiv
 | Force Charging Hold | Switch | Keeps Force Charging running indefinitely after the duration expires; turn on before starting Force Charging |
 | Force Discharging | Switch | Discharge battery at configured power/duration/cutoff SoC; auto-stops ~1% above cutoff to guarantee no grid draw during transition |
 | Force Discharging Hold | Switch | Keeps Force Discharging running for the full configured duration; prevents early stop when the SoC target is reached |
-| Force Export | Switch | Export to grid at a target feed-in rate (kW); battery discharge dynamically adjusted for live house load and PV; stops when duration expires or battery hits cutoff SoC |
+| Force Export | Switch | Hold grid export at a target rate (kW) measured at the grid meter; the battery is adjusted continuously and settles at or slightly above the target, never at a grid import; stops when the duration expires or the battery reaches the Stop at SoC |
 | Force Export Hold | Switch | Keeps Force Export running indefinitely after the duration expires; turn on before starting Force Export for continuous export without a time limit |
-| Force Import | Switch | Import from grid at a target kW, dynamically adjusted for live PV so total grid draw stays at the target; stops at cutoff SoC |
+| Force Import | Switch | Hold grid import at a target rate (kW) measured at the grid meter by adjusting battery charging; settles at or slightly below the target; stops at the Stop at SoC |
 | Force Import Hold | Switch | Keeps Force Import running indefinitely after the duration expires; turn on before starting Force Import |
 | Force Import Pause | Binary sensor | On when Force Import is automatically paused; resumes automatically when conditions are met |
 | Dispatch | Switch | Generic dispatch - mode, power, SoC target, and duration all configurable independently |
-| Excess Export | Switch | Charge battery with PV power that would otherwise be clipped by the AC output limit; auto-pauses when house draws from grid, auto-resumes when PV recovers |
+| Excess Export | Switch | Charge battery with PV power that would otherwise be clipped by the AC output limit; auto-pauses when house draws from grid, auto-resumes when PV recovers; turns itself off after Excess Export Duration if one is set |
 | Excess Export Pause | Binary sensor | On when Excess Export has automatically paused due to grid import |
 | Dispatch PV Enabled | Switch | Enable (on, default) or disable (off) the inverter's PV coupling during dispatch via register 0x088A; toggling while a dispatch is active writes the register immediately, otherwise it applies on the next dispatch |
 | Force Charging Power | Number | Charging power in kW (0–20) |
@@ -424,12 +439,13 @@ These are read-only sensor views of the scheduling registers. The writable equiv
 | Force Discharging Power | Number | Discharging power in kW (0–20) |
 | Force Discharging Duration | Number | Duration in minutes (0–480, step 5) |
 | Force Discharging Stop at SoC | Number | Stop discharging at this SoC % (switch auto-stops ~1% above this) |
-| Force Export Power | Number | Target grid feed-in rate in kW (0–20); battery discharge is calculated dynamically to achieve this |
+| Force Export Power | Number | Grid export target in kW (0–20) at the grid meter; do not add house load or subtract PV in an automation, the integration does that |
 | Force Export Duration | Number | Duration in minutes (0–480, step 5) |
 | Force Export Stop at SoC | Number | Stop exporting at this SoC % (switch auto-stops ~1% above this) |
-| Force Import Power | Number | Target grid import in kW (0–20) |
+| Force Import Power | Number | Grid import target in kW (0–20) at the grid meter (not the battery charge rate) |
 | Force Import Duration | Number | Duration in minutes (0–480, step 5) |
 | Force Import Stop at SoC | Number | Stop importing at this SoC % |
+| Excess Export Duration | Number | Excess Export turns itself off after this many minutes (0–480, step 5); 0 = runs until turned off (default) |
 | Dispatch Power | Number | Dispatch power in kW (−20 to +20; negative = charge, positive = discharge/export); defaults to 0 kW |
 | Dispatch Duration | Number | Duration in minutes (0–480, step 5) |
 | Dispatch Stop at SoC | Number | SoC target % for the generic Dispatch switch |
@@ -454,11 +470,15 @@ These are read-only sensor views of the scheduling registers. The writable equiv
 
 #### Changing Dispatch Parameters While Running
 
-You can adjust Power, SoC target, or Duration for an active Force Charging, Force Discharging, Force Export, or Force Import session without toggling the switch:
+You can adjust Power, Stop at SoC, or Duration for an active Force Charging, Force Discharging, Force Export, Force Import or Dispatch session without toggling the switch; just change the slider.
 
-1. Change the relevant number slider (e.g. set Duration to 120 min).
+- A **Power** or **Stop at SoC** change takes effect at once and the countdown keeps running from where it was. For Force Export and Force Import, a power change moves the battery setpoint by the change in target and the control trims from there, so an automation can adjust the target often without disturbing the export.
+- A **Duration** change restarts the countdown from the new duration.
+- For Excess Export, changing **Excess Export Duration** while it runs moves the stop time without interrupting it.
 
-The integration immediately rewrites the dispatch registers with the updated values and restarts the countdown from the new duration. The per-mode countdown sensor reflects the change within the next 5 s poll.
+#### Tip: deferring battery charging with Excess Export
+
+Beyond preventing clipping, Excess Export keeps battery charging from PV surplus on hold while still letting the battery cover the house when PV drops below demand. On a dynamic tariff you can use this to export solar during a morning price peak and let the battery charge later, for example in a cheaper period around solar noon, when the solar forecast says there will be enough surplus to fill it. Set Excess Export Duration to the length of the peak so it turns itself off and the battery is not left waiting all day.
 
 ---
 

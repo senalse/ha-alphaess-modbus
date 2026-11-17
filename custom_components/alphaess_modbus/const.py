@@ -948,7 +948,7 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
                     address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
                     icon="mdi:flash", ac_limit_scaled=True,
-                    description="Target grid export level for Force Export; the integration adds house load and subtracts PV to derive the battery dispatch value (dispatch parameter)"),
+                    description="Grid export target for Force Export, measured at the grid meter; the integration adjusts the battery to hold it (dispatch parameter)"),
     ModbusNumberDef("dispatch_cutoff_soc", "Dispatch Stop at SoC",
                     address=None,
                     min_value=4, max_value=100, step=1, unit="%",
@@ -978,7 +978,12 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
                     address=None,
                     min_value=0, max_value=20, step=0.1, unit="kW",
                     icon="mdi:flash", ac_limit_scaled=True,
-                    description="Target grid import level for Force Import; the integration subtracts PV and adds house load to derive the battery charge value (dispatch parameter)"),
+                    description="Grid import target for Force Import, measured at the grid meter; the integration adjusts battery charging to hold it (dispatch parameter)"),
+    ModbusNumberDef("excess_export_duration", "Excess Export Duration",
+                    address=None,
+                    min_value=0, max_value=480, step=5, unit="min",
+                    icon="mdi:clock-time-eight-outline", default_value=0,
+                    description="Excess Export turns itself off after this many minutes; 0 = runs until turned off"),
     # Charging/discharging period times are handled by the time platform (time.py)
     # using ModbusTimeDef entries in TIME_REGISTERS below.
 ]
