@@ -1,93 +1,29 @@
 # Changelog
 
-### v1.15.0-beta.6
-
-#### Bug fixes
-
-- fix: Force Export now ends at the cutoff SoC without a short period where the house runs from the grid. In beta.5 the inverter stopped discharging just above the cutoff and the switch followed about 15 seconds later, so the house load was imported for those seconds. With Force Export Hold off, the inverter is now given a target 1 % below the cutoff and the switch ends the export at the cutoff itself, while the battery is still discharging. With Hold on nothing changes: the inverter stops at the cutoff and the switch stays on.
-
-#### Upgrading from v1.15.0-beta.5
-
-- No entities are renamed, removed, or added. No settings change.
-- Force Export still ends at the cutoff SoC you set. If Home Assistant loses its connection to the inverter during an export, the inverter stops by itself about 1 % below the cutoff instead of just above it.
-
----
-
-### v1.15.0-beta.5
-
-#### Bug fixes
-
-- fix: Force Export now ends when the inverter stops discharging just above the cutoff SoC. The inverter enforces the cutoff itself and can stop one SoC step early (for example at 50.4 % with a cutoff of 50 %). The switch used to wait for the exact cutoff, so it stayed on with an idle battery and the house ran from the grid until the duration ended. It now turns off about 10 seconds after the battery goes idle close to the cutoff. This problem was introduced in v1.15.0-beta.2 and is not present in v1.14.0.
-- fix: Force Import no longer turns itself off after about 10 seconds when the battery is idle. This happened whenever the house load was already above the import target, because there was nothing left for the battery to charge with. It now stays on for the full duration and ends at the cutoff SoC, in the same way as Force Export.
-- fix: Force Import now turns off when the cutoff SoC is lowered below the current SoC while it is running.
-- fix: With Force Export Hold on, raising the cutoff SoC above the current SoC while Force Export is running no longer turns the switch off.
-- fix: The four Hold switches now keep their state across a Home Assistant restart and an integration reload. They used to come back off every time.
-- fix: The Sync Dispatch State button no longer turns off the Hold switches or Dispatch PV Enabled. It only clears dispatch switches that are showing on while the inverter is not dispatching.
-
-#### Upgrading from v1.15.0-beta.4
-
-- No entities are renamed, removed, or added.
-- Hold switches now stay on after a restart. If you relied on them resetting to off, turn them off yourself or from an automation.
-- Force Import no longer stops early when the battery is idle. An automation that expected it to switch off by itself in that case should turn it off explicitly or rely on the duration.
-- Dispatch switches (Force Charging, Force Discharging, Force Export, Force Import, Dispatch, Excess Export) still come back off after a restart, as before.
-
----
-
-### v1.15.0-beta.4
-
-#### Bug fixes
-
-- fix: Reconfigure no longer fails with "cannot connect" when the IP address and port are unchanged (for example when only the Slave ID is changed). The inverter accepts a single connection and the integration was already using it, so the connection test was refused. The test now runs over the existing connection.
-- fix: Reconfigure now reloads the integration once instead of twice, and not at all when nothing was changed. This also removes a reload pattern that Home Assistant 2026.12 will reject.
-- fix: After changing the IP address through Reconfigure, the entry name follows the new address (unless you renamed it yourself), and an address that another AlphaESS entry already uses is refused.
-
-#### Changes
-
-- change: The integration now declares its category (solar batteries) for the Home Assistant Marketplace, and the README describes installation through the Marketplace on Home Assistant 2026.11 and later.
-
-#### Upgrading from v1.15.0-beta.3
-
-- No entity or setting changes. Nothing to do after updating.
-
----
-
-### v1.15.0-beta.3
-
-#### Bug fixes
-
-- fix: Force Export Hold now correctly prevents auto-off at the SoC cutoff again. The previous fix removed the battery power watcher (which caused false auto-offs when battery was legitimately idle) but inadvertently also removed the Hold gate. Hold now gates the SoC cutoff check in the servo watcher directly.
-
-#### Upgrading from v1.15.0-beta.2
-
-- No entity or setting changes. Force Export Hold is functional again.
-
----
-
-### v1.15.0-beta.2
-
-#### Bug fixes
-
-- fix: Force Export no longer turns off automatically after a few seconds when battery power stays near 0 W. This happened when PV production already covered the export target (battery legitimately idle), or when PV register data was unavailable at the moment the switch was turned on. Both cases were misread by the battery activity watchdog as the SoC cutoff having been reached. The Force Export servo already monitors SoC and stops the switch at cutoff, so the watchdog was redundant and only caused false auto-offs.
-
-#### Upgrading from v1.15.0-beta.1
-
-- No entity or setting changes. Force Export now stays on correctly when PV alone covers the export target and no battery discharge is needed.
-
-#### Upgrading from v1.14.0
-
-- No entities are renamed, removed, or added. No existing settings are affected.
-
----
-
-### v1.15.0-beta.1
+### v1.15.0
 
 #### What's new
 
-- Connection settings (IP address, port, Slave ID) can now be changed without removing and re-adding the integration. A "Reconfigure" option appears in the three-dot menu on the AlphaESS card in Settings > Devices & Services. The new settings are connection-tested before saving, and the integration reloads automatically on success.
+- Connection settings (IP address, port, Slave ID) can now be changed without removing and re-adding the integration. A Reconfigure option appears in the three-dot menu on the AlphaESS card in Settings > Devices & Services (Home Assistant 2024.11 or later). The new settings are connection-tested before saving, the test works while the integration is connected to the inverter, and the integration reloads once, only when something actually changed. After an IP address change the entry name follows the new address unless you renamed it yourself, and an address that another AlphaESS entry already uses is refused.
+- The integration declares its category (solar batteries) for the Home Assistant Marketplace, and the README describes installation through the Marketplace on Home Assistant 2026.11 and later.
+
+#### Bug fixes
+
+- Force Export no longer turns itself off when the battery is idle for a legitimate reason, such as PV production already covering the export target, or PV data not yet being available when the switch is turned on.
+- Force Export now ends cleanly at the cutoff SoC. With Force Export Hold off, the inverter is given a target 1 % below the cutoff and the switch ends the export at the cutoff itself while the battery is still discharging, so the house does not run from the grid while the export winds down. If the inverter still stops just above the cutoff, the switch turns off about 10 seconds after the battery goes idle.
+- Force Import no longer turns itself off after about 10 seconds when the battery is idle. This happened whenever the house load was already above the import target. It now runs for the full duration and ends at the cutoff SoC, and lowering the cutoff below the current SoC while it runs turns it off.
+- With Force Export Hold on, raising the cutoff SoC above the current SoC while Force Export is running no longer turns the switch off.
+- The four Hold switches now keep their state across a Home Assistant restart and an integration reload. They used to come back off every time.
+- The Sync Dispatch State button no longer turns off the Hold switches or Dispatch PV Enabled. It only clears dispatch switches that are showing on while the inverter is not dispatching.
 
 #### Upgrading from v1.14.0
 
-- No entities are renamed, removed, or added. No existing settings are affected. The only change is the addition of the Reconfigure option.
+- No entities are renamed, removed, or added, so dashboards and automations keep working. No existing settings are affected.
+- Hold switches now stay on after a restart. If you relied on them resetting to off, turn them off yourself or from an automation.
+- Force Import no longer stops early when the battery is idle. An automation that expected it to switch off by itself in that case should turn it off explicitly or rely on the duration.
+- Force Export no longer stops when the battery goes idle well above the cutoff. It ends at the cutoff SoC or when the duration runs out.
+- If Home Assistant loses its connection to the inverter during a Force Export with Hold off, the inverter stops by itself about 1 % below the cutoff.
+- Dispatch switches (Force Charging, Force Discharging, Force Export, Force Import, Dispatch, Excess Export) still come back off after a restart, as before.
 
 ---
 
