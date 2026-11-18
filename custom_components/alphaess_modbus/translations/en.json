@@ -55,6 +55,9 @@
       },
       "force_import_pause": {
         "name": "Force Import Pause"
+      },
+      "peak_shaving_limited": {
+        "name": "Peak Shaving Limited"
       }
     },
     "switch": {
@@ -90,6 +93,12 @@
       },
       "dispatch_pv": {
         "name": "Dispatch PV Enabled"
+      },
+      "peak_shaving": {
+        "name": "Peak Shaving"
+      },
+      "peak_shaving_charge": {
+        "name": "Peak Shaving Charge Below Limit"
       }
     },
     "number": {
@@ -149,6 +158,15 @@
       },
       "excess_export_duration": {
         "name": "Excess Export Duration"
+      },
+      "peak_shaving_power": {
+        "name": "Peak Shaving Power"
+      },
+      "peak_shaving_cutoff_soc": {
+        "name": "Peak Shaving Stop at SoC"
+      },
+      "peak_shaving_duration": {
+        "name": "Peak Shaving Duration"
       }
     },
     "select": {
@@ -201,6 +219,9 @@
       },
       "today_house_load": {
         "name": "Today's House Load"
+      },
+      "peak_shaving_countdown": {
+        "name": "Peak Shaving Countdown"
       }
     },
     "button": {

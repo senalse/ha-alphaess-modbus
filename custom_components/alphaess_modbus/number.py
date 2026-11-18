@@ -29,6 +29,9 @@ DISPATCH_PARAM_KEYS = {
     "dispatch_duration",
     "dispatch_power",
     "excess_export_duration",
+    "peak_shaving_power",
+    "peak_shaving_cutoff_soc",
+    "peak_shaving_duration",
 }
 
 # Maps param key prefix (or exact key) to the switch that owns it
@@ -39,6 +42,7 @@ _PARAM_SWITCH = {
     "force_import": "force_import",
     "dispatch": "dispatch",
     "excess_export": "excess_export",
+    "peak_shaving": "peak_shaving",
 }
 
 

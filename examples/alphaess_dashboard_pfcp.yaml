@@ -221,6 +221,27 @@ sections:
             name: Duration (min, 0 = no limit)
 
       - type: entities
+        title: Peak Shaving
+        show_header_toggle: false
+        state_color: true
+        entities:
+          - entity: switch.alphaess_inverter_peak_shaving
+            name: Enable
+          - entity: switch.alphaess_inverter_peak_shaving_charge_below_limit
+            name: Charge Below Limit
+          - entity: binary_sensor.alphaess_inverter_peak_shaving_limited
+            name: Limited
+          - entity: sensor.alphaess_inverter_peak_shaving_countdown
+            name: Countdown
+          - type: section
+          - entity: number.alphaess_inverter_peak_shaving_power
+            name: Import Limit (kW)
+          - entity: number.alphaess_inverter_peak_shaving_cutoff_soc
+            name: Stop at SoC (%)
+          - entity: number.alphaess_inverter_peak_shaving_duration
+            name: Duration (min, 0 = no limit)
+
+      - type: entities
         title: Force Import
         show_header_toggle: false
         entities:

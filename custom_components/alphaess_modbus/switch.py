@@ -85,20 +85,28 @@ def _calc_pv_production(data: dict) -> int | None:
     return max(0, sum(int(data[k]) for k in keys))
 
 
-def _servo_step(power_w: float, error_w: float, *, tolerate_positive: bool, ac_limit_w: float) -> float:
-    """One servo update of a battery power setpoint (W, >= 0).
+def _servo_step(
+    power_w: float,
+    error_w: float,
+    *,
+    tolerate_positive: bool,
+    ac_limit_w: float,
+    min_w: float = 0.0,
+) -> float:
+    """One servo update of a battery power setpoint (W), clamped to [min_w, ac_limit_w].
 
     error_w > 0 asks for more battery power. tolerate_positive selects which side of
     the target is harmless: True for Force Import (under-import), False for Force
-    Export (over-export). Inside the band the setpoint is held unchanged.
+    Export and Peak Shaving (over-export / under the import limit). Inside the band
+    the setpoint is held unchanged (but still clamped, so a bound that moved, such as
+    the SoC floor, applies at once).
     """
     if tolerate_positive:
         hold = -_SERVO_NOISE_W <= error_w <= _SERVO_TOLERANCE_W
     else:
         hold = -_SERVO_TOLERANCE_W <= error_w <= _SERVO_NOISE_W
-    if hold:
-        return power_w
-    return max(0.0, min(float(ac_limit_w), power_w + _SERVO_GAIN * error_w))
+    new = power_w if hold else power_w + _SERVO_GAIN * error_w
+    return max(float(min_w), min(float(ac_limit_w), new))
 
 
 # Below this grid reading (W) in UPS mode the grid is treated as absent (outage).
@@ -129,6 +137,7 @@ _MUTEX_SWITCHES = [
     "force_import",
     "dispatch",
     "excess_export",
+    "peak_shaving",
 ]
 
 SWITCH_DEFS = [
@@ -143,9 +152,21 @@ SWITCH_DEFS = [
     {"key": "dispatch",            "name": "Dispatch",             "icon": "mdi:button-pointer"},
     {"key": "excess_export",       "name": "Excess Export",        "icon": "mdi:solar-power"},
     {"key": "dispatch_pv",         "name": "Dispatch PV Enabled",  "icon": "mdi:solar-power"},
+    {"key": "peak_shaving",        "name": "Peak Shaving",         "icon": "mdi:transmission-tower-off"},
+    {"key": "peak_shaving_charge", "name": "Peak Shaving Charge Below Limit", "icon": "mdi:battery-arrow-up"},
 ]
 
 _HOLD_SWITCHES = {"force_charging_hold", "force_discharging_hold", "force_export_hold", "force_import_hold"}
+# Preference switches: no dispatch of their own, restore their last state. (dispatch_pv is
+# handled separately because it defaults to on and writes the PV switch register.)
+_PREFERENCE_SWITCHES = _HOLD_SWITCHES | {"peak_shaving_charge"}
+
+# Peak Shaving: each write asks the inverter for this long, and the setpoint is rewritten
+# at least every _DISPATCH_STALE_REWRITE_S, so if Home Assistant stops the inverter goes
+# back to normal operation within this time.
+_PS_DISPATCH_S = 300
+# Below this magnitude the setpoint is written as 0 (no charge, no discharge).
+_PS_IDLE_W = 50
 
 
 async def async_setup_entry(
@@ -207,6 +228,14 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._fi_power_w: float | None = None
         self._fi_target_w: int | None = None
         self._fi_settle_until: float = 0.0
+        # Peak Shaving watcher state (signed setpoint: + discharge, - charge)
+        self._ps_listener_unsub: Any | None = None
+        self._ps_power_w: float | None = None
+        self._ps_last_power_raw: int | None = None
+        self._ps_last_soc_raw: int | None = None
+        self._ps_last_write_time: float = 0.0
+        self._ps_target_w: int | None = None
+        self._ps_settle_until: float = 0.0
         # Battery power watcher state
         self._bp_near_zero_since: float | None = None
         # Force Export / Force Import: battery idle near the SoC cutoff since (monotonic)
@@ -218,7 +247,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             # Persistent preference, not a dispatch. Default ON (PV enabled);
             # restore the last known state across restarts.
             self._is_on = True if state is None else state.state == "on"
-        elif self.switch_key in _HOLD_SWITCHES:
+        elif self.switch_key in _PREFERENCE_SWITCHES:
             # Persistent preference with no dispatch of its own (it only gates the
             # auto-off of its parent switch), so it survives restarts and reloads.
             self._is_on = state is not None and state.state == "on"
@@ -250,7 +279,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             await self._maybe_write_pv_switch(DISPATCH_PV_ON)
             return
 
-        if self.switch_key in _HOLD_SWITCHES:
+        if self.switch_key in _PREFERENCE_SWITCHES:
             self._is_on = True
             self.async_write_ha_state()
             return
@@ -300,6 +329,8 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             elif self.switch_key == "excess_export":
                 await self._start_excess_export()
                 self._schedule_ee_duration()
+            elif self.switch_key == "peak_shaving":
+                await self._start_peak_shaving()
         except Exception as err:
             _LOGGER.error("Failed to start %s: %s", self.switch_key, err)
             self._is_on = False
@@ -324,6 +355,9 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         if self.switch_key == "excess_export":
             # Its only parameter is the duration: move the stop time, keep running.
             self._schedule_ee_duration()
+            return
+        if self.switch_key == "peak_shaving":
+            await self._ps_param_change(param_key)
             return
         if reset_timer:
             await self.async_turn_on()
@@ -354,7 +388,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             await self._maybe_write_pv_switch(DISPATCH_PV_OFF)
             return
 
-        if self.switch_key in _HOLD_SWITCHES:
+        if self.switch_key in _PREFERENCE_SWITCHES:
             self._is_on = False
             self.async_write_ha_state()
             return
@@ -366,7 +400,7 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             self._coordinator.active_dispatch_key = None
         self._cancel_timer()
         self.async_write_ha_state()
-        if self.switch_key in _HOLD_SWITCHES:
+        if self.switch_key in _PREFERENCE_SWITCHES:
             return
         await self._coordinator.async_reset_dispatch()
         if self.switch_key == "excess_export":
@@ -410,6 +444,18 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         self._stall_since = None
         if self.switch_key == "excess_export":
             self._coordinator.ee_off_at = None
+        if self._ps_listener_unsub:
+            self._ps_listener_unsub()
+            self._ps_listener_unsub = None
+        self._ps_power_w = None
+        self._ps_last_power_raw = None
+        self._ps_last_soc_raw = None
+        self._ps_last_write_time = 0.0
+        self._ps_target_w = None
+        self._ps_settle_until = 0.0
+        if self.switch_key == "peak_shaving":
+            self._coordinator.ps_off_at = None
+            self._coordinator.ps_limited = False
 
     def _schedule_ee_duration(self) -> None:
         """Arm (or re-arm) Excess Export's auto-off from its Duration slider; 0 = none."""
@@ -1109,3 +1155,169 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
 
         self._fi_listener_unsub = self._coordinator.async_add_listener(_check)
 
+    # ------------------------------------------------------------------
+    # Peak Shaving
+    # ------------------------------------------------------------------
+
+    def _ps_bounds(self, d: dict) -> tuple[float, float]:
+        """Allowed range of the signed setpoint (W): (most charge, most discharge)."""
+        ac = float(self._coordinator.ac_limit_w)
+        max_dis = ac
+        bms = d.get("battery_max_discharge_power")
+        if bms is not None and float(bms) > 0:
+            max_dis = min(max_dis, float(bms))
+        soc = d.get("soc_battery")
+        floor = self._num("peak_shaving_cutoff_soc", 20.0)
+        if soc is not None and float(soc) <= floor:
+            max_dis = 0.0
+        if self._ps_charge_enabled():
+            max_chg = ac
+            bms_c = d.get("battery_max_charge_power")
+            if bms_c is not None and float(bms_c) > 0:
+                max_chg = min(max_chg, float(bms_c))
+            if soc is not None and float(soc) >= 100.0:
+                max_chg = 0.0
+            return -max_chg, max_dis
+        return 0.0, max_dis
+
+    def _ps_charge_enabled(self) -> bool:
+        switches = self.hass.data[DOMAIN].get(f"{self._entry.entry_id}_switches", {})
+        sw = switches.get("peak_shaving_charge")
+        return bool(sw and sw.is_on)
+
+    def _ps_words(self, power_w: float) -> tuple[int, int]:
+        """Dispatch power word and SoC word for a signed setpoint."""
+        if abs(power_w) < _PS_IDLE_W:
+            power_w = 0.0
+        word = int(round(32000 + power_w))
+        if power_w > 0:
+            soc_raw = int(self._num("peak_shaving_cutoff_soc", 20.0) / DISPATCH_SOC_SCALE)
+        else:
+            soc_raw = int(100.0 / DISPATCH_SOC_SCALE)
+        return word, soc_raw
+
+    async def _write_ps_dispatch(self, word: int, soc_raw: int) -> None:
+        await self._coordinator.async_write_dispatch([
+            1, 0, int(word), 0, 32000, DISPATCH_MODE_SOC_CONTROL, int(soc_raw), 0, _PS_DISPATCH_S,
+            DISPATCH_FLOW_DIRECTION, DISPATCH_PV_UNCHANGED,
+        ], reset_timer=False)
+
+    def _schedule_ps_duration(self) -> None:
+        """Arm (or re-arm) the auto-off from Peak Shaving Duration; 0 = none."""
+        if self._duration_cancel:
+            self._duration_cancel.cancel()
+            self._duration_cancel = None
+        minutes = self._num("peak_shaving_duration", 0.0)
+        if not self._is_on or minutes <= 0:
+            self._coordinator.ps_off_at = None
+            return
+        seconds = int(minutes * 60)
+        self._schedule_duration_off(seconds)
+        self._coordinator.ps_off_at = datetime.now(timezone.utc) + timedelta(seconds=seconds)
+
+    async def _start_peak_shaving(self) -> None:
+        """Start holding grid import at or below Peak Shaving Power.
+
+        Seeded from the current readings: before the dispatch starts the battery runs in
+        normal mode, so battery + grid - limit is the setpoint that would put the grid
+        at the limit. From then on the watcher servos on the grid meter only.
+        """
+        d = self._coordinator.data or {}
+        limit_w = int(self._num("peak_shaving_power", 5.0) * 1000)
+        lo, hi = self._ps_bounds(d)
+        grid = d.get("power_grid")
+        battery = d.get("power_battery")
+        seed = 0.0
+        if grid is not None and battery is not None:
+            seed = float(battery) + float(grid) - limit_w
+        seed = max(lo, min(hi, seed))
+        word, soc_raw = self._ps_words(seed)
+        await self._write_ps_dispatch(word, soc_raw)
+        self._ps_power_w = seed
+        self._ps_last_power_raw = word
+        self._ps_last_soc_raw = soc_raw
+        self._ps_last_write_time = time.monotonic()
+        self._ps_target_w = limit_w
+        self._coordinator.ps_limited = False
+        self._schedule_ps_duration()
+        self._start_peak_shaving_watcher()
+
+    async def _ps_param_change(self, param_key: str | None) -> None:
+        if param_key == "peak_shaving_duration":
+            self._schedule_ps_duration()
+            return
+        if self._ps_power_w is None or self._ps_last_power_raw is None:
+            await self._start_peak_shaving()
+            return
+        if param_key == "peak_shaving_power":
+            # A higher limit means less battery: shift the setpoint by the change.
+            new_target = int(self._num("peak_shaving_power", 5.0) * 1000)
+            old_target = self._ps_target_w if self._ps_target_w is not None else new_target
+            lo, hi = self._ps_bounds(self._coordinator.data or {})
+            self._ps_power_w = max(lo, min(hi, self._ps_power_w - (new_target - old_target)))
+            self._ps_target_w = new_target
+            now = time.monotonic()
+            if abs(new_target - old_target) >= _SERVO_SETTLE_MIN_STEP_W and now >= self._ps_settle_until + _SERVO_SETTLE_S:
+                self._ps_settle_until = now + _SERVO_SETTLE_S
+            return
+        # Stop at SoC: the SoC word is part of the block, rewrite now.
+        lo, hi = self._ps_bounds(self._coordinator.data or {})
+        self._ps_power_w = max(lo, min(hi, self._ps_power_w))
+        word, soc_raw = self._ps_words(self._ps_power_w)
+        await self._write_ps_dispatch(word, soc_raw)
+        self._ps_last_power_raw, self._ps_last_soc_raw = word, soc_raw
+        self._ps_last_write_time = time.monotonic()
+
+    def _start_peak_shaving_watcher(self) -> None:
+        """Servo the signed battery setpoint so grid import stays at or below the limit.
+
+        error = grid - limit (> 0 means importing above the limit: discharge more).
+        Importing above the limit is corrected beyond _SERVO_NOISE_W; importing below it
+        is tolerated up to _SERVO_TOLERANCE_W, so with Charge Below Limit on the grid
+        settles at or just under the limit. Without it the setpoint never goes below 0,
+        so the battery idles while the house is under the limit.
+        """
+        if self._ps_listener_unsub is not None:
+            return
+
+        def _check() -> None:
+            if not self._is_on:
+                return
+            d = self._coordinator.data or {}
+            grid = d.get("power_grid")
+            if grid is None or self._ps_power_w is None:
+                return
+            limit_w = int(self._num("peak_shaving_power", 5.0) * 1000)
+            self._ps_target_w = limit_w
+            lo, hi = self._ps_bounds(d)
+            now = time.monotonic()
+            error_w = float(grid) - limit_w
+            if now >= self._ps_settle_until:
+                self._ps_power_w = _servo_step(
+                    self._ps_power_w, error_w, tolerate_positive=False, ac_limit_w=hi, min_w=lo,
+                )
+            else:
+                self._ps_power_w = max(lo, min(hi, self._ps_power_w))
+            self._coordinator.ps_limited = (
+                error_w > _SERVO_NOISE_W and self._ps_power_w >= hi - _SERVO_MIN_STEP_W
+            )
+            word, soc_raw = self._ps_words(self._ps_power_w)
+            changed = (
+                self._ps_last_power_raw is None
+                or abs(word - self._ps_last_power_raw) >= _SERVO_MIN_STEP_W
+                or (word == 32000) != (self._ps_last_power_raw == 32000)
+                or soc_raw != self._ps_last_soc_raw
+            )
+            stale = (now - self._ps_last_write_time) >= _DISPATCH_STALE_REWRITE_S
+            if changed or stale:
+                task = self.hass.async_create_task(
+                    self._write_ps_dispatch(word, soc_raw),
+                    name=f"alphaess_{self.switch_key}_servo",
+                )
+                self._pending_tasks.add(task)
+                task.add_done_callback(self._pending_tasks.discard)
+                self._ps_last_power_raw = word
+                self._ps_last_soc_raw = soc_raw
+                self._ps_last_write_time = now
+
+        self._ps_listener_unsub = self._coordinator.async_add_listener(_check)

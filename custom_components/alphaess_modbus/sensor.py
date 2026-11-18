@@ -174,6 +174,10 @@ async def async_setup_entry(
         ]
     ]
     entities.append(AlphaESSExcessExportCountdownSensor(coordinator, entry))
+    entities.append(AlphaESSOffAtCountdownSensor(
+        coordinator, entry, "peak_shaving_countdown", "Peak Shaving Countdown",
+        "ps_off_at", "mdi:transmission-tower-off",
+    ))
     entities += [
         AlphaESSDailySensor(coordinator, entry, key, source_key, ac_power_key)
         for key, source_key, ac_power_key in DAILY_ENERGY_SENSORS
@@ -428,6 +432,46 @@ class AlphaESSModeCountdownSensor(CoordinatorEntity[AlphaESSCoordinator], Sensor
             return None
         elapsed = (datetime.now(timezone.utc) - started).total_seconds()
         return max(0, int(dur - elapsed))
+
+
+class AlphaESSOffAtCountdownSensor(CoordinatorEntity[AlphaESSCoordinator], SensorEntity):
+    """Time left until a coordinator `*_off_at` deadline (unknown when none is set)."""
+    _attr_has_entity_name = True
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_suggested_unit_of_measurement = UnitOfTime.MINUTES
+    _attr_suggested_display_precision = 0
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator: AlphaESSCoordinator, entry: ConfigEntry,
+                 key: str, name: str, attr: str, icon: str) -> None:
+        super().__init__(coordinator)
+        self._off_attr = attr
+        self._attr_name = name
+        self._attr_translation_key = key
+        self._attr_icon = icon
+        self._attr_unique_id = f"{entry.entry_id}_{key}"
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)})
+        self._unsub: Callable | None = None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._unsub = async_track_time_interval(self.hass, self._tick, timedelta(seconds=1))
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._unsub:
+            self._unsub()
+            self._unsub = None
+
+    async def _tick(self, _now: datetime) -> None:
+        self.async_write_ha_state()
+
+    @property
+    def native_value(self) -> int | None:
+        off_at = getattr(self.coordinator, self._off_attr, None)
+        if off_at is None:
+            return None
+        return max(0, int((off_at - datetime.now(timezone.utc)).total_seconds()))
 
 
 class AlphaESSExcessExportCountdownSensor(CoordinatorEntity[AlphaESSCoordinator], SensorEntity):

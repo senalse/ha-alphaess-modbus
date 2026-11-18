@@ -21,7 +21,7 @@ Based on the excellent YAML package by [Axel Koegler](https://projects.hillviewl
 
 ## Features
 
-- **110 sensor entities enabled by default** (187 total) - real-time power flows, battery SoC/SoH, cell voltages, temperatures, voltages, energy totals, daily energy summaries, dispatch diagnostics, grid safety parameters, faults & warnings
+- **111 sensor entities enabled by default** (188 total) - real-time power flows, battery SoC/SoH, cell voltages, temperatures, voltages, energy totals, daily energy summaries, dispatch diagnostics, grid safety parameters, faults & warnings
 - **Force Charging** - charge battery from grid at configurable power (kW), duration, and cutoff SoC
 - **Force Charging Hold** - keeps Force Charging running indefinitely after the duration expires; turn on before starting Force Charging for continuous charging without a time limit
 - **Force Discharging** - discharge battery at configurable power, duration, and cutoff SoC; automatically stops 1% above the cutoff and resets dispatch so the inverter returns to self-consumption without any grid draw
@@ -158,7 +158,7 @@ B3 and B3PLUS inverters report some registers with different scale factors. Sele
 
 ### Sensors (read-only)
 
-110 sensors are enabled by default; the remaining 77 are disabled and can be turned on individually in HA under Settings → Devices & Services → [device] → entities. Sensors marked *(disabled)* below are off by default.
+111 sensors are enabled by default; the remaining 77 are disabled and can be turned on individually in HA under Settings → Devices & Services → [device] → entities. Sensors marked *(disabled)* below are off by default.
 
 #### Power (real-time)
 
@@ -328,6 +328,7 @@ These sensors reset each day at midnight using the inverter's lifetime cumulativ
 | Force Export Countdown | min | 5 s | Live remaining time when Force Export is active; 0 otherwise |
 | Force Import Countdown | min | 5 s | Live remaining time when Force Import is active; 0 otherwise |
 | Excess Export Countdown | min | 1 s | Time left before Excess Export turns itself off; unknown when no Excess Export Duration is set |
+| Peak Shaving Countdown | min | 1 s | Time left before Peak Shaving turns itself off; unknown when no Peak Shaving Duration is set |
 
 #### Scheduling - Charging / Discharging Periods
 
@@ -432,6 +433,12 @@ These are read-only sensor views of the scheduling registers. The writable equiv
 | Dispatch | Switch | Generic dispatch - mode, power, SoC target, and duration all configurable independently |
 | Excess Export | Switch | Charge battery with PV power that would otherwise be clipped by the AC output limit; auto-pauses when house draws from grid, auto-resumes when PV recovers; turns itself off after Excess Export Duration if one is set |
 | Excess Export Pause | Binary sensor | On when Excess Export has automatically paused due to grid import |
+| Peak Shaving | Switch | Hold grid import at or below Peak Shaving Power by discharging the battery; see Peak Shaving below |
+| Peak Shaving Charge Below Limit | Switch | Off (default): the battery only discharges above the limit and idles below it. On: the battery also charges with the headroom, so grid import stays flat at the limit. Kept across restarts |
+| Peak Shaving Limited | Binary sensor | On while Peak Shaving is on, the grid is above the limit and the battery cannot discharge more (Stop at SoC, AC limit or BMS limit reached) |
+| Peak Shaving Power | Number | Grid import limit in kW (0–30) at the grid meter |
+| Peak Shaving Stop at SoC | Number | Peak Shaving does not discharge below this SoC % (default 20) |
+| Peak Shaving Duration | Number | Peak Shaving turns itself off after this many minutes (0–480, step 5); 0 = runs until turned off (default) |
 | Dispatch PV Enabled | Switch | Enable (on, default) or disable (off) the inverter's PV coupling during dispatch via register 0x088A; toggling while a dispatch is active writes the register immediately, otherwise it applies on the next dispatch |
 | Force Charging Power | Number | Charging power in kW (0–20) |
 | Force Charging Duration | Number | Duration in minutes (0–480, step 5) |
@@ -475,6 +482,15 @@ You can adjust Power, Stop at SoC, or Duration for an active Force Charging, For
 - A **Power** or **Stop at SoC** change takes effect at once and the countdown keeps running from where it was. For Force Export and Force Import, a power change moves the battery setpoint by the change in target and the control trims from there, so an automation can adjust the target often without disturbing the export.
 - A **Duration** change restarts the countdown from the new duration.
 - For Excess Export, changing **Excess Export Duration** while it runs moves the stop time without interrupting it.
+
+#### Peak Shaving
+
+Peak Shaving keeps the import measured at the grid meter at or below Peak Shaving Power. When the house draws more than that, the battery supplies the rest, up to the inverter's AC limit and the battery's discharge limit, and never below Peak Shaving Stop at SoC. Typical use: an EV charger that Home Assistant cannot control, or a connection with a capacity limit.
+
+- With **Peak Shaving Charge Below Limit** off, the battery idles while the house is below the limit, so it is kept for the peaks. It does not charge from solar surplus while Peak Shaving is on.
+- With it on, the battery also charges when the house uses less than the limit, so grid import stays flat at the limit (useful for charging a car at a fixed grid draw while the battery buffers the difference).
+- Peak Shaving is mutually exclusive with the other dispatch controls, and like them it does not resume after a Home Assistant restart. Each command to the inverter lasts 5 minutes and is renewed while Peak Shaving runs, so if Home Assistant stops, the inverter returns to normal operation within 5 minutes.
+- **AC-coupled PV:** on at least one system with a separate AC-coupled PV inverter, the PV inverter's output drops to almost nothing whenever the battery is commanded to discharge. If you see that, Peak Shaving will cost you solar production while it is shaving.
 
 #### Tip: deferring battery charging with Excess Export
 
