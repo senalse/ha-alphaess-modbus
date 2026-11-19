@@ -212,7 +212,7 @@ sections:
           - type: section
           - entity: number.alphaess_inverter_peak_shaving_power
             name: Import Limit (kW)
-          - entity: number.alphaess_inverter_peak_shaving_cutoff_soc
+          - entity: number.alphaess_inverter_peak_shaving_stop_at_soc
             name: Stop at SoC (%)
           - entity: number.alphaess_inverter_peak_shaving_duration
             name: Duration (min, 0 = no limit)
