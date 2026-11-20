@@ -253,9 +253,29 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
             self._is_on = state is not None and state.state == "on"
         elif state and state.state == "on":
             self._is_on = False  # Don't auto-resume dispatch on restart
+            if self.switch_key == "peak_shaving":
+                await self._end_orphaned_ps_dispatch()
         self.async_on_remove(
             self._coordinator.async_add_listener(self.async_write_ha_state)
         )
+
+    async def _end_orphaned_ps_dispatch(self) -> None:
+        """End the Peak Shaving dispatch left running when HA stopped or the entry reloaded.
+
+        The inverter keeps the last setpoint for up to _PS_DISPATCH_S with nothing servoing
+        it (a discharge setpoint keeps discharging). The switch comes back off, so end the
+        dispatch now, but only while the inverter still reports a dispatch with our time.
+        """
+        d = self._coordinator.data or {}
+        if d.get("dispatch_start") != 1:
+            return
+        if d.get("dispatch_time") != _PS_DISPATCH_S:
+            return  # another dispatch is running; not ours to end
+        try:
+            await self._coordinator.async_reset_dispatch()
+            _LOGGER.info("Peak Shaving was on before the restart; ended its leftover dispatch")
+        except Exception as err:  # noqa: BLE001 - the inverter falls back on its own anyway
+            _LOGGER.warning("Could not end the leftover Peak Shaving dispatch: %s", err)
 
     async def async_will_remove_from_hass(self) -> None:
         self._cancel_timer()
