@@ -487,10 +487,11 @@ You can adjust Power, Stop at SoC, or Duration for an active Force Charging, For
 
 Peak Shaving keeps the import measured at the grid meter at or below Peak Shaving Power. When the house draws more than that, the battery supplies the rest, up to the inverter's AC limit and the battery's discharge limit, and never below Peak Shaving Stop at SoC. Typical use: an EV charger that Home Assistant cannot control, or a connection with a capacity limit.
 
-- With **Peak Shaving Charge Below Limit** off, the battery idles while the house is below the limit, so it is kept for the peaks. It does not charge from solar surplus while Peak Shaving is on.
+- With **Peak Shaving Charge Below Limit** off, the battery idles while the house is below the limit, so it is kept for the peaks. It does not charge from solar surplus while Peak Shaving is on, so any surplus goes to the grid instead. Keep that in mind on an export-limited or zero-export connection.
 - With it on, the battery also charges when the house uses less than the limit, so grid import stays flat at the limit (useful for charging a car at a fixed grid draw while the battery buffers the difference).
 - Peak Shaving is mutually exclusive with the other dispatch controls, and like them it does not resume after a Home Assistant restart. Each command to the inverter lasts 5 minutes and is renewed while Peak Shaving runs, so if Home Assistant stops, the inverter returns to normal operation within 5 minutes. When Home Assistant comes back (or the integration reloads) while that command is still running, the integration ends it straight away.
-- **AC-coupled PV:** on at least one system with a separate AC-coupled PV inverter, the PV inverter's output drops to almost nothing whenever the battery is commanded to discharge. If you see that, Peak Shaving will cost you solar production while it is shaving.
+- Grid import is read every 2 seconds and the battery follows gradually, so the limit is not instantaneous: a large sudden load (for example an EV charger starting at 7 kW) can take the grid over the limit for up to about 20 seconds before the battery catches up. Small changes are corrected within a few seconds.
+- **AC-coupled PV:** on at least one system with a separate AC-coupled PV inverter, the PV inverter's output dropped to almost nothing while battery power was flowing out to the grid (during Force Export, and for a few seconds after a large load switched off during Peak Shaving). Normal Peak Shaving discharge, which covers the house without exporting, did not cause it in testing.
 
 #### Tip: deferring battery charging with Excess Export
 
