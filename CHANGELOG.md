@@ -1,21 +1,33 @@
 # Changelog
 
-### v1.16.0-beta.1
+### v1.16.0
 
-- **fix:** Total Energy Feed to Grid (PV) read the register that holds the AC-coupled PV inverter's own standby consumption, so it stayed near zero. It now reads the PV inverter's production. The old value is available as the new disabled sensor Total Energy PV Inverter Consumption.
-- **fix:** Force Export and Force Import could settle about 200 W short of the target, which at a low Force Export target meant importing from the grid. Small corrections are no longer dropped, so the grid now settles on the target. Force Export settles at or slightly above the export target and corrects any shortfall; Force Import settles at or slightly below the import target and corrects any excess.
-- **fix:** Changing Force Export Power or Force Import Power while the switch is on moves the battery setpoint by the change in target instead of recalculating it from house load, which could make the battery swing for a few seconds. Rapid slider changes from an automation cost at most one inverter write per poll and no longer slow the control's response to load changes. Changing Stop at SoC while running rewrites the current setpoint with the new target.
-- **fix:** Current House Load read zero during a grid outage. When the inverter is in UPS mode and the grid reads zero, house load now comes from PV and battery power.
-- **fix:** A register that a model does not support (the inverter answers "illegal data address") no longer fails the registers read with it, is retried only every 10 minutes instead of every poll, and no longer counts toward the error limit that can make all entities unavailable.
-- **fix:** The Battery Power and Battery Current descriptions now give the sign the inverter uses: positive is discharging, negative is charging. The values are unchanged.
-- **feat:** New battery sensors from the BMS: Battery Max Charge Power, Battery Max Discharge Power and Battery SoC Calibration (enabled), plus Battery Implementation Charge SoC, Battery Implementation Discharge SoC, Battery Remaining Charge SoC, Battery Remaining Discharge SoC and Battery Single Cut Error Code (disabled; not every model fills these in).
-- **feat:** Battery Status has new `charge_state` and `discharge_state` attributes (high and low byte of the status value). The state text is unchanged.
-- **feat:** New Inverter Work Mode Name sensor showing the work mode as text (Wait, Online, UPS, Bypass, Fault, DC, Self Test, Check, Update Master, Update Slave, Update ARM).
-- **feat:** New Excess Export Duration slider and Excess Export Countdown sensor. With a duration set, Excess Export turns itself off after that time; changing the slider while it runs moves the stop time. The default of 0 keeps the old behaviour.
-- **feat:** New Excess Power sensor (PV production minus house load) and Today's House Load sensor (house energy use today, integrated from Current House Load).
-- **feat:** New PV Inverter Energy and PV System Total Energy sensors (disabled by default).
-- **feat:** The README has a tip on using Excess Export to defer battery charging on dynamic tariffs, and the example dashboards include the new entities.
-- **upgrading from v1.15.0:** No entities are renamed or removed. Total Energy Feed to Grid (PV) keeps its entity ID but jumps once from its old small value to the PV inverter's lifetime production; if it is in the Energy dashboard, correct that hour in Developer tools > Statistics. Force Export and Force Import now hold the target more closely, so with a low Force Export target you will see slightly more export than before rather than a small import. 16 new entities are added (8 enabled, 8 disabled by default); none change existing behaviour unless you set Excess Export Duration. The Force Import changes are tested in code but not yet on hardware; please report anything unexpected.
+#### What's new
+
+- New battery sensors from the BMS: Battery Max Charge Power, Battery Max Discharge Power and Battery SoC Calibration (enabled), plus Battery Implementation Charge SoC, Battery Implementation Discharge SoC, Battery Remaining Charge SoC, Battery Remaining Discharge SoC and Battery Single Cut Error Code (disabled; not every model fills these in).
+- Battery Status has new `charge_state` and `discharge_state` attributes (high and low byte of the status value). The state text is unchanged.
+- New Inverter Work Mode Name sensor showing the work mode as text (Wait, Online, UPS, Bypass, Fault, DC, Self Test, Check, Update Master, Update Slave, Update ARM).
+- New Excess Export Duration slider and Excess Export Countdown sensor. With a duration set, Excess Export turns itself off after that time; changing the slider while it runs moves the stop time. The default of 0 keeps the old behaviour.
+- New Excess Power sensor (PV production minus house load, never below 0) and Today's House Load sensor (house energy use today, integrated from Current House Load).
+- New PV Inverter Energy and PV System Total Energy sensors (disabled by default).
+- The README has a tip on using Excess Export to defer battery charging on dynamic tariffs, and the example dashboards include the new entities.
+
+#### Bug fixes
+
+- Total Energy Feed to Grid (PV) read the register that holds the AC-coupled PV inverter's own standby consumption, so it stayed near zero. It now reads the PV inverter's production. The old value is available as the new disabled sensor Total Energy PV Inverter Consumption.
+- Force Export and Force Import could settle about 200 W short of the target, which at a low Force Export target meant importing from the grid. Small corrections are no longer dropped, so the grid now settles on the target. Force Export settles at or slightly above the export target and corrects any shortfall; Force Import settles at or slightly below the import target and corrects any excess.
+- Changing Force Export Power or Force Import Power while the switch was on recalculated the battery setpoint from house load, which could make the battery swing for a few seconds. It now moves the setpoint by the change in target. Rapid slider changes from an automation cost at most one inverter write per poll and no longer slow the control's response to load changes. Changing Force Export Stop at SoC or Force Import Stop at SoC while the switch is on now rewrites the current setpoint with the new target.
+- Current House Load read zero during a grid outage. When the inverter is in UPS mode and the grid reads zero, it now comes from PV and battery power.
+- A register that a model does not support (the inverter answers "illegal data address") made the other registers read in the same request fail too. Those registers now update normally, the unsupported one is retried only every 10 minutes after three failed reads in a row instead of every poll, and these replies no longer count toward the error limit that can make all entities unavailable.
+- The README descriptions of Battery Power and Battery Current gave no sign convention. They now give the sign the inverter uses: positive is discharging, negative is charging. The values are unchanged.
+
+#### Upgrading from v1.15.0
+
+- No entities are renamed or removed, so dashboards and automations keep working.
+- 16 new entities are added (8 enabled, 8 disabled by default). None change existing behaviour unless you set Excess Export Duration.
+- Total Energy Feed to Grid (PV) keeps its entity ID but jumps once from its old small value to the PV inverter's lifetime production. If it is in the Energy dashboard, correct that hour in Developer tools > Statistics.
+- Force Export and Force Import now hold the target more closely. With a low Force Export target you will see slightly more export than before rather than a small import.
+- If you are on v1.16.0-beta.1, this release is the same code; only the version number changes.
 
 ---
 
