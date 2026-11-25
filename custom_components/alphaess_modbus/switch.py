@@ -415,6 +415,12 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         await self._async_turn_off_silent()
 
     async def _async_turn_off_silent(self) -> None:
+        if not self._is_on and self._coordinator.active_dispatch_key != self.switch_key:
+            # Already off and not the owner of the active dispatch. Writing the stop
+            # block here would end whichever mode IS dispatching and leave its switch
+            # on, with nothing to re-establish it. Use the Dispatch Reset button to
+            # stop the inverter regardless of switch state.
+            return
         self._is_on = False
         if self._coordinator.active_dispatch_key == self.switch_key:
             self._coordinator.active_dispatch_key = None
