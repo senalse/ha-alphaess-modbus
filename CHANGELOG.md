@@ -1,5 +1,13 @@
 # Changelog
 
+### v1.17.0-beta.2
+
+- **fix:** Turning off a dispatch switch that was already off no longer stops whatever the inverter is actually doing. Before this, turning off an idle switch while another mode was running (turning Peak Shaving off while Force Charging was charging, for example) ended that charge, left the Force Charging switch showing on, and nothing restarted it. Only a switch that is actually running can stop its dispatch now. The one exception is a switch that reads off while the integration still has it as the active dispatch, which can still send the stop so a state mismatch is always clearable.
+- **testing:** Peak Shaving is now confirmed on real hardware for the startup cleanup (a running battery setpoint is ended at once when Home Assistant comes back, rather than being left to expire), for Charge Below Limit sitting at the Stop at SoC, and for the Peak Shaving Limited sensor. One path is still covered only by the unit tests and has not been reproduced on hardware: the battery setpoint pinning at the inverter's AC limit, which needs a load bigger than the inverter can supply.
+- **upgrading from v1.17.0-beta.1:** No entities are added, renamed or removed and nothing needs reconfiguring. One behaviour change worth knowing: an automation that turns a dispatch switch off defensively, to be sure the inverter is idle, now does nothing when that switch is already off. Use the Dispatch Reset button for that, which stops the inverter whatever the switches show and is unchanged. Peak Shaving itself behaves exactly as in beta.1.
+
+---
+
 ### v1.17.0-beta.1
 
 - **feat:** New Peak Shaving switch that holds grid import at or below a limit you set by discharging the battery to cover whatever the house needs above it. Typical use: an EV charger or another large load that Home Assistant cannot control, or a connection with a capacity limit. Seven new entities: the Peak Shaving switch, Peak Shaving Charge Below Limit, Peak Shaving Power, Peak Shaving Stop at SoC, Peak Shaving Duration, Peak Shaving Countdown and Peak Shaving Limited.
