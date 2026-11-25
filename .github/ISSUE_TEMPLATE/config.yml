@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or setup help
+    url: https://github.com/senalse/ha-alphaess-modbus/discussions/categories/q-a
+    about: Ask how to configure something, interpret a sensor, or get an entity working. Questions are answered faster here than in issues.
+  - name: Feature idea or discussion
+    url: https://github.com/senalse/ha-alphaess-modbus/discussions/categories/ideas
+    about: Suggest a new entity, control or behaviour, or discuss how an existing one should work.
+  - name: Share a dashboard or automation
+    url: https://github.com/senalse/ha-alphaess-modbus/discussions/categories/show-and-tell
+    about: Show what you built with the integration.

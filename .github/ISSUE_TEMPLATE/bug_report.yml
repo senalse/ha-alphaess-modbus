@@ -1,0 +1,62 @@
+name: Bug report
+description: Something in the integration is broken or behaves incorrectly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For questions, setup help or feature ideas, use
+        [Discussions](https://github.com/senalse/ha-alphaess-modbus/discussions) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what actually happened.
+    validations:
+      required: true
+  - type: input
+    id: integration-version
+    attributes:
+      label: Integration version
+      placeholder: "1.17.0-beta.2"
+    validations:
+      required: true
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.11.1"
+    validations:
+      required: true
+  - type: input
+    id: inverter-model
+    attributes:
+      label: Inverter model
+      description: As printed on the unit, plus the battery model if relevant.
+      placeholder: "SMILE-M5 with SMILE-BAT-10.1P"
+    validations:
+      required: true
+  - type: dropdown
+    id: coupling
+    attributes:
+      label: System type
+      options:
+        - DC-coupled (PV into the inverter)
+        - AC-coupled (separate solar inverter)
+        - Hybrid / both
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: >
+        Settings > System > Logs, filtered to alphaess_modbus. Enable debug logging on the
+        integration first if the log is empty.
+      render: text
+  - type: textarea
+    id: entities
+    attributes:
+      label: Affected entities
+      description: Entity IDs involved, and their states when the problem occurred.
