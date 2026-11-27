@@ -297,7 +297,7 @@ Numbers with an address write directly to a Modbus register when changed. Number
 | N/A | `force_import_duration` | Force Import Duration | Maximum time Force Import runs before auto-stopping (dispatch parameter) | min | 0 - 480 | 5 |
 | N/A | `force_import_power` | Force Import Power | Grid import target for Force Import, measured at the grid meter; the integration adjusts battery charging to hold it (dispatch parameter) | kW | 0 - 20 | 0.1 |
 | N/A | `peak_shaving_power` | Peak Shaving Power | Grid import limit for Peak Shaving, measured at the grid meter; the battery discharges to keep import at or below it (dispatch parameter) | kW | 0 - 30 | 0.1 |
-| N/A | `peak_shaving_cutoff_soc` | Peak Shaving Stop at SoC | Peak Shaving does not discharge the battery below this SoC (dispatch parameter) | % | 4 - 100 | 1 |
+| N/A | `peak_shaving_cutoff_soc` | Peak Shaving Stop at SoC | Discharge floor for Peak Shaving, NOT a charge target: the battery is not discharged while the SoC is at or below this value, and setting it at or above the current SoC stops Peak Shaving discharging at all (dispatch parameter) | % | 4 - 100 | 1 |
 | N/A | `peak_shaving_duration` | Peak Shaving Duration | Peak Shaving turns itself off after this many minutes; 0 = runs until turned off | min | 0 - 480 | 5 |
 | N/A | `excess_export_duration` | Excess Export Duration | Excess Export turns itself off after this many minutes; 0 = runs until turned off | min | 0 - 480 | 5 |
 

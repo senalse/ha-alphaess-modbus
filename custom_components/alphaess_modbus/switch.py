@@ -1257,6 +1257,14 @@ class AlphaESSSwitch(RestoreEntity, SwitchEntity):
         if grid is not None and battery is not None:
             seed = float(battery) + float(grid) - limit_w
         seed = max(lo, min(hi, seed))
+        if hi <= 0:
+            _LOGGER.warning(
+                "Peak Shaving started with Stop at SoC (%s %%) at or above the battery SoC "
+                "(%s %%), so the battery cannot discharge and the grid will not be held at the "
+                "limit. Stop at SoC is a discharge floor, not a charge target",
+                self._num("peak_shaving_cutoff_soc", 20.0),
+                d.get("soc_battery"),
+            )
         word, soc_raw = self._ps_words(seed)
         await self._write_ps_dispatch(word, soc_raw)
         self._ps_power_w = seed

@@ -988,7 +988,7 @@ NUMBER_REGISTERS: list[ModbusNumberDef] = [
                     address=None,
                     min_value=4, max_value=100, step=1, unit="%",
                     icon="mdi:percent-box-outline", default_value=20,
-                    description="Peak Shaving does not discharge the battery below this SoC (dispatch parameter)"),
+                    description="Discharge floor for Peak Shaving, NOT a charge target: the battery is not discharged while the SoC is at or below this value, and setting it at or above the current SoC stops Peak Shaving discharging at all (dispatch parameter)"),
     ModbusNumberDef("peak_shaving_duration", "Peak Shaving Duration",
                     address=None,
                     min_value=0, max_value=480, step=5, unit="min",
