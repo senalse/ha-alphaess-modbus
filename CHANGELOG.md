@@ -1,23 +1,33 @@
 # Changelog
 
-### v1.17.0-beta.2
+### v1.17.0
 
-- **fix:** Turning off a dispatch switch that was already off no longer stops whatever the inverter is actually doing. Before this, turning off an idle switch while another mode was running (turning Peak Shaving off while Force Charging was charging, for example) ended that charge, left the Force Charging switch showing on, and nothing restarted it. Only a switch that is actually running can stop its dispatch now. The one exception is a switch that reads off while the integration still has it as the active dispatch, which can still send the stop so a state mismatch is always clearable.
-- **testing:** Peak Shaving is now confirmed on real hardware for the startup cleanup (a running battery setpoint is ended at once when Home Assistant comes back, rather than being left to expire), for Charge Below Limit sitting at the Stop at SoC, and for the Peak Shaving Limited sensor. One path is still covered only by the unit tests and has not been reproduced on hardware: the battery setpoint pinning at the inverter's AC limit, which needs a load bigger than the inverter can supply.
-- **upgrading from v1.17.0-beta.1:** No entities are added, renamed or removed and nothing needs reconfiguring. One behaviour change worth knowing: an automation that turns a dispatch switch off defensively, to be sure the inverter is idle, now does nothing when that switch is already off. Use the Dispatch Reset button for that, which stops the inverter whatever the switches show and is unchanged. Peak Shaving itself behaves exactly as in beta.1.
+#### What's new
 
----
+- **Peak Shaving.** A new switch that holds grid import at or below a limit you set, by discharging the battery to cover whatever the house needs above it. Typical use: an EV charger or another large load that Home Assistant cannot control, or a connection with a capacity limit. Seven new entities: the Peak Shaving switch, Peak Shaving Charge Below Limit, Peak Shaving Power, Peak Shaving Stop at SoC, Peak Shaving Duration, Peak Shaving Countdown and Peak Shaving Limited.
+- **Two ways to run it.** With Peak Shaving Charge Below Limit off, the default, the battery only discharges above the limit and idles below it, so it is kept for the peaks. With it on, the battery also charges with whatever headroom is left below the limit, so grid import stays flat at the limit and the battery buffers the difference in both directions.
+- Peak Shaving Power is the import limit in kW (0 to 30), measured at the grid meter. The battery never discharges below Peak Shaving Stop at SoC (default 20 %) and never beyond the inverter's AC limit or the battery's own limit. Peak Shaving Limited turns on while the grid is above the limit and the battery cannot give any more.
+- Peak Shaving Duration turns the switch off after a set number of minutes (0 to 480, 0 = runs until you turn it off) and Peak Shaving Countdown shows the time left.
+- Each command to the inverter lasts 5 minutes and is renewed while Peak Shaving runs, so if Home Assistant stops the inverter returns to normal operation within 5 minutes. When Home Assistant starts again, or the integration reloads, while that command is still running, the integration ends it straight away instead of leaving the old setpoint running unattended.
+- Peak Shaving is mutually exclusive with the other dispatch controls (Force Charging, Force Discharging, Force Export, Force Import, Dispatch, Excess Export): turning one of those on turns Peak Shaving off. Like them it comes back off after a Home Assistant restart and never resumes by itself.
+- The README has a Peak Shaving section and both example dashboards have a Peak Shaving card.
 
-### v1.17.0-beta.1
+#### Bug fixes
 
-- **feat:** New Peak Shaving switch that holds grid import at or below a limit you set by discharging the battery to cover whatever the house needs above it. Typical use: an EV charger or another large load that Home Assistant cannot control, or a connection with a capacity limit. Seven new entities: the Peak Shaving switch, Peak Shaving Charge Below Limit, Peak Shaving Power, Peak Shaving Stop at SoC, Peak Shaving Duration, Peak Shaving Countdown and Peak Shaving Limited.
-- **feat:** Two ways to run it. With Peak Shaving Charge Below Limit off, the default, the battery only discharges above the limit and idles below it, so it is kept for the peaks. With it on, the battery also charges with whatever headroom is left below the limit, so grid import stays flat at the limit and the battery buffers the difference in both directions.
-- **feat:** Peak Shaving Power is the import limit in kW (0 to 30), measured at the grid meter. The battery never discharges below Peak Shaving Stop at SoC (default 20 %) and never beyond the inverter's AC limit or the battery's own limit. Peak Shaving Limited turns on while the grid is above the limit and the battery cannot give any more.
-- **feat:** Peak Shaving Duration turns the switch off after a set number of minutes (0 to 480, 0 = runs until you turn it off) and Peak Shaving Countdown shows the time left.
-- **feat:** Each command to the inverter lasts 5 minutes and is renewed while Peak Shaving runs, so if Home Assistant stops the inverter returns to normal operation within 5 minutes. When Home Assistant starts again, or the integration reloads, while that command is still running, the integration ends it straight away instead of leaving the old setpoint running unattended.
-- **feat:** Peak Shaving is mutually exclusive with the other dispatch controls (Force Charging, Force Discharging, Force Export, Force Import, Dispatch, Excess Export): turning one of those on turns Peak Shaving off. Like them it comes back off after a Home Assistant restart and never resumes by itself.
-- **feat:** The README has a Peak Shaving section and both example dashboards have a Peak Shaving card.
-- **upgrading from v1.16.0:** No entities are renamed or removed, so dashboards and automations keep working. Seven new entities are added, all enabled by default, and nothing changes until you turn Peak Shaving on; every existing control behaves exactly as in v1.16.0. Two things to know before using it: grid power is read every 2 seconds and the battery setpoint is moved gradually, so a large sudden load, an EV charger starting at 7 kW for example, can leave the grid above the limit for up to about 20 seconds before the battery catches up; and with Charge Below Limit off the battery idles below the limit, so solar surplus goes to the grid instead of into the battery while Peak Shaving is on, which matters on an export-limited or zero-export connection. Peak Shaving Charge Below Limit keeps its state across restarts, like the Hold switches.
+- Turning off a dispatch switch that was already off stopped whatever the inverter was actually doing. Turning off an idle switch while Force Charging was running ended the charge, left the Force Charging switch showing on, and nothing restarted it. Only a switch that is actually running can stop its dispatch now. To stop the inverter regardless of what the switches show, use the Dispatch Reset button, which is unchanged.
+- Peak Shaving Stop at SoC is a discharge floor, not a charge target, and the name invited the opposite reading. The documentation now says so plainly, and Peak Shaving logs a warning when it starts with that floor at or above the current battery SoC, which is the setting that stops it discharging at all.
+
+#### Upgrading from v1.16.0
+
+No entities are renamed or removed, so dashboards and automations keep working. Seven new entities are added, all enabled by default, and nothing changes until you turn Peak Shaving on; every existing control behaves exactly as in v1.16.0.
+
+One behaviour change to know about: an automation that turns a dispatch switch off defensively, to be sure the inverter is idle, now does nothing when that switch is already off. Use the Dispatch Reset button for that instead.
+
+Two things to understand before using Peak Shaving. Grid power is read every 2 seconds and the battery setpoint is moved gradually, so a large sudden load, an EV charger starting at 7 kW for example, can leave the grid above the limit for up to about 20 seconds before the battery catches up. And with Charge Below Limit off the battery idles below the limit, so solar surplus goes to the grid instead of into the battery while Peak Shaving is on, which matters on an export-limited or zero-export connection. Peak Shaving Charge Below Limit keeps its state across restarts, like the Hold switches.
+
+#### Testing
+
+Peak Shaving has been confirmed on real hardware for the charge and discharge halves, the crossing between them, the Stop at SoC floor, the duration and countdown, mutual exclusion, and the cleanup of a leftover command after a restart, on two independent systems including one with an EV charger and air conditioning. One path is covered by unit tests only and has not been reproduced on hardware: the battery setpoint pinning at the inverter's AC limit, which needs a load larger than the inverter can supply.
 
 ---
 
